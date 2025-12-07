@@ -1,7 +1,7 @@
 @import "tailwindcss";
 
 @theme {
-  --color-mindful-green: #10B981;
-  --color-mindful-dark: #064E3B;
+  --color-mindful-green: #4A8A4F;
+  --color-mindful-dark: #0F1E0F;
   --color-mindful-bg: #022c22;
 }
