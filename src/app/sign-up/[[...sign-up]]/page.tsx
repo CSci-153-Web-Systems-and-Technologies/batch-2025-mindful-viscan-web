@@ -6,9 +6,12 @@ export default function SignUpPage() {
     <main className="flex min-h-screen flex-col p-0 bg-[linear-gradient(110deg,var(--color-mindful-green)_0%,var(--color-mindful-dark)_100%)]">
       <NavBar />
       <div className="flex flex-grow items-center justify-center p-6 pt-24">
-        <div className="w-full max-w-md">
-          <div className="rounded-2xl bg-[#031207] p-8 md:p-12 border border-gray-900/50 shadow-[4px_4px_0px_0px_rgba(34,197,94,0.15)] flex flex-col items-center">
+        <div className="w-full max-w-lg">
+          <div className="rounded-2xl bg-[#031207] p-10 md:p-16 min-h-[500px] border border-gray-900/50 shadow-[4px_4px_0px_0px_rgba(34,197,94,0.15)] flex flex-col items-center">
             <SignUp 
+              routing="path"
+              path="/sign-up"
+              signInUrl="/sign-in"
               appearance={{
                 elements: {
                   rootBox: "w-full",
