@@ -46,7 +46,8 @@ const NavBar: React.FC<NavBarProps> = ({ isLoggedIn = false }) => {
             </div>
             
             {/* You can even swap the button text dynamically */}
-            <Button text="Login" href="/login" className="py-2 px-2 text-sm" />
+            <Button text="Login" href="/login" className="hover:bg-mindful-green py-2 px-2 text-sm" />
+            <Button text="Sign Up" href="/signup" className="hover:bg-mindful-green py-2 px-2 text-sm" />
           </>
         )}
       </div>
