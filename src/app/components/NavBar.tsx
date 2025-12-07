@@ -13,9 +13,6 @@ const NavBar: React.FC<NavBarProps> = ({ isLoggedIn = false }) => {
     <nav className="fixed top-0 w-full z-50 flex items-center px-5 py-5 text-white" style={{ backgroundColor: 'var(--color-mindful-dark)' }}>
      {/* === LOGO SECTION === */}
       <div className="cursor-pointer hover:opacity-80 transition-opacity">
-        {/* src: The path starts from the 'public' folder. 
-           If your file is public/logo.png, just use "/logo.png" 
-        */}
         <Image 
           src="/images/Logo.png" 
           alt="MindfulViscan Logo" 
