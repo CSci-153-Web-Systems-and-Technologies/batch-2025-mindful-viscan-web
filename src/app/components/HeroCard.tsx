@@ -1,5 +1,3 @@
-"use client";
-
 import React from 'react';
 import Button from './Button';
 
@@ -8,7 +6,7 @@ const HeroCard = () => {
     <div className="flex min-h-screen items-center justify-center p-6">
       {/* Container Note: Removed the bg-[#467854] so the page background shows through */}
 
-      <div className="relative w-full max-w-7xl max-h-4xl mx-auto rounded-2xl bg-[#031207] p-10 md:p-16 border border--900/50 shadow-[4px_4px_0px_0px_rgba(34,197,94,0.15)]">
+      <div className="relative w-full max-w-7xl mx-auto rounded-2xl bg-[#031207] p-10 md:p-16 border border--900/50 shadow-[4px_4px_0px_0px_rgba(34,197,94,0.15)]">
         {/* ^ That shadow-[...] class is the "light accent border" 
            on the lower right! It creates a solid, non-blurred offset.
         */}
@@ -41,8 +39,8 @@ const HeroCard = () => {
           <div className="mt-8 space-y-3">
             <Button
               text="Login / Sign Up"
-              onClick={() => console.log('Navigate to login')}
-              className="px-12 py-3 text-lg bg-mindful-green text-mindful-dark hover:bg-mindful-dark"
+              href="/login"
+              className="px-12 py-3 text-lg bg-mindful-light text-mindful-dark hover:bg-mindful-dark"
             />
             
             <p className="text-sm font-medium text-white tracking-wide">
