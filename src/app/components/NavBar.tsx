@@ -10,7 +10,7 @@ interface NavBarProps {
 
 const NavBar: React.FC<NavBarProps> = ({ isLoggedIn = false }) => {
   return (
-    <nav className="fixed top-0 w-full z-50 flex items-center px-5 py-5 text-white" style={{ backgroundColor: 'var(--color-mindful-dark)' }}>
+    <nav className="fixed top-0 w-full z-50 flex items-center px-2 py-2 text-white" style={{ backgroundColor: 'var(--color-mindful-dark)' }}>
      {/* === LOGO SECTION === */}
       <div className="cursor-pointer hover:opacity-80 transition-opacity">
         <Image 
@@ -46,7 +46,7 @@ const NavBar: React.FC<NavBarProps> = ({ isLoggedIn = false }) => {
             </div>
             
             {/* You can even swap the button text dynamically */}
-            <Button text="Login" onClick={() => console.log('Go to login')} className="py-3 px-3 text-sm" />
+            <Button text="Login" onClick={() => console.log('Go to login')} className="py-2 px-2 text-sm" />
           </>
         )}
       </div>

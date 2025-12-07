@@ -9,7 +9,8 @@ interface ButtonProps {
 }
 
 const Button: React.FC<ButtonProps> = ({ text, onClick, className = '' }) => {
-  const baseClasses = 'bg-mindful-green hover:bg-mindful-dark text-white font-semibold rounded-lg shadow-lg transition-all transform hover:scale-[1.02] active:scale-95';
+  // Do not force background in the base classes so callers can override it via `className`.
+  const baseClasses = 'text-white font-semibold rounded-lg shadow-lg transition-all transform hover:scale-[1.02] active:scale-95';
   const defaultPadding = 'py-2 px-4';
   
   // Check if custom className includes padding or text size, if not use defaults
