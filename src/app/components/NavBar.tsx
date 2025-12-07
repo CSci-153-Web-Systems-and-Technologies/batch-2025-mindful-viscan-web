@@ -2,13 +2,10 @@
 
 import React from 'react';
 import Image from 'next/image';
+import { SignedIn, SignedOut, UserButton } from '@clerk/nextjs';
 import Button from './Button';
 
-interface NavBarProps {
-  isLoggedIn?: boolean; // Optional prop, defaults to false
-}
-
-const NavBar: React.FC<NavBarProps> = ({ isLoggedIn = false }) => {
+const NavBar: React.FC = () => {
   return (
     <nav className="fixed top-0 w-full z-50 flex items-center px-2 py-2 text-white" style={{ backgroundColor: 'var(--color-mindful-dark)' }}>
      {/* === LOGO SECTION === */}
@@ -22,10 +19,10 @@ const NavBar: React.FC<NavBarProps> = ({ isLoggedIn = false }) => {
         />
       </div>
 
-      {/* Dynamic Section: Changes based on state */}
+      {/* Dynamic Section: Changes based on auth state */}
       <div className="flex items-center gap-8">
-        {isLoggedIn ? (
-          // === STATE A: LOGGED IN (Student View) ===
+        <SignedIn>
+          {/* === STATE A: LOGGED IN (Student View) === */}
           <>
             <a href="/dashboard" className="hover:text-green-300 transition-colors font-medium">
               Dashboard
@@ -35,21 +32,28 @@ const NavBar: React.FC<NavBarProps> = ({ isLoggedIn = false }) => {
             </a>
             
             {/* User Profile Avatar / Dropdown */}
-            <div className="h-10 w-10 rounded-full bg-mindful-green flex items-center justify-center border-2 border-white/20 cursor-pointer hover:scale-105 transition-transform">
-              <span className="font-bold text-sm">KV</span>
-            </div>
+            <UserButton 
+              appearance={{
+                elements: {
+                  avatarBox: "h-10 w-10",
+                  userButtonPopoverCard: "bg-[#031207] border border-gray-700",
+                  userButtonPopoverActionButton: "text-gray-200 hover:bg-mindful-green",
+                },
+              }}
+            />
           </>
-        ) : (
-          // === STATE B: GUEST (Public View) ===
+        </SignedIn>
+        
+        <SignedOut>
+          {/* === STATE B: GUEST (Public View) === */}
           <>
              <div className="space-x-8 text-sm font-medium opacity-80 hidden md:block">
             </div>
             
-            {/* You can even swap the button text dynamically */}
-            <Button text="Login" href="/login" className="hover:bg-mindful-green py-2 px-2 text-sm" />
-            <Button text="Sign Up" href="/signup" className="hover:bg-mindful-green py-2 px-2 text-sm" />
+            <Button text="Login" href="/sign-in" className="hover:bg-mindful-green py-2 px-2 text-sm" />
+            <Button text="Sign Up" href="/sign-up" className="hover:bg-mindful-green py-2 px-2 text-sm" />
           </>
-        )}
+        </SignedOut>
       </div>
     </nav>
   );
