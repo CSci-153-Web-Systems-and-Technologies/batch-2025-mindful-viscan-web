@@ -57,8 +57,11 @@ export default clerkMiddleware(async (auth, req) => {
 
   // Verify page: only applicants/counselors
   if (path.startsWith('/verify-counselor')) {
-    // Allow if counselor or applicant, or if no role yet (so page can set role to applicant)
-    if (isCounselor || isApplicant || !hasRole) return NextResponse.next();
+    if (isCounselor) {
+      return NextResponse.redirect(new URL('/counselor-dashboard', req.url));
+    }
+    // Allow if applicant/pending, or if no role yet (so page can set role to applicant)
+    if (isApplicant || !hasRole) return NextResponse.next();
     if (isStudent) {
       return NextResponse.redirect(new URL('/dashboard', req.url));
     }
