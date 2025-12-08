@@ -13,9 +13,21 @@ export default clerkMiddleware(async (auth, req) => {
   const isApplicant = role === 'applicant' || counselorStatus === 'pending';
   const isStudent = role === 'student';
 
+  const targetForRole = () => {
+    if (isCounselor) return '/counselor-dashboard';
+    if (isApplicant) return '/verify-counselor';
+    return '/dashboard';
+  };
+
   const requiresAuth = ['/dashboard', '/counselor-dashboard', '/verify-counselor'].some((p) =>
     path.startsWith(p)
   );
+
+  // If signed in and hitting public/auth pages, redirect to role-based destination
+  const publicOrAuth = ['/', '/sign-in', '/sign-up', '/sign-up-counselor'];
+  if (userId && publicOrAuth.includes(path)) {
+    return NextResponse.redirect(new URL(targetForRole(), req.url));
+  }
 
   if (!userId && requiresAuth) {
     return redirectToSignIn({ returnBackUrl: req.url });
