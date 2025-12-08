@@ -40,7 +40,7 @@ const HeroCard = () => {
             <div className="w-fit">
               <Button
                 text="Login / Sign Up"
-                href="/login"
+                href="/sign-in"
                 className="w-full px-12 py-3 text-lg bg-mindful-green text-mindful-dark hover:bg-mindful-dark"
               />
               
