@@ -13,6 +13,7 @@ export default function SignUpCounselorPage() {
               path="/sign-up-counselor"
               signInUrl="/sign-in"
               forceRedirectUrl="/verify-counselor"
+              afterSignUpUrl="/post-sign-up-counselor"
               appearance={{
                 elements: {
                   rootBox: "w-full",
