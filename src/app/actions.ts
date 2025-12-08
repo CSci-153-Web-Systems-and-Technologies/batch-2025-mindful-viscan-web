@@ -35,3 +35,28 @@ export async function submitApplication(formData: FormData) {
   }
 }
 
+export async function ensureApplicantMetadata() {
+  const { userId } = await auth();
+  if (!userId) {
+    throw new Error('User not authenticated');
+  }
+
+  const client = await clerkClient();
+  const user = await client.users.getUser(userId);
+  const currentRole = (user.publicMetadata as any)?.role as string | undefined;
+  const currentStatus = (user.publicMetadata as any)?.counselor_status as string | undefined;
+
+  if (currentRole === 'applicant' || currentRole === 'counselor' || currentStatus === 'pending') {
+    return { updated: false };
+  }
+
+  await client.users.updateUserMetadata(userId, {
+    publicMetadata: {
+      role: 'applicant',
+      counselor_status: 'pending',
+    },
+  });
+
+  return { updated: true };
+}
+

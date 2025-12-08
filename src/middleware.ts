@@ -5,8 +5,10 @@ export default clerkMiddleware(async (auth, req) => {
   const { userId, sessionClaims, redirectToSignIn } = await auth();
   const path = req.nextUrl.pathname;
 
-  const role = (sessionClaims?.metadata as any)?.role ?? 'student';
+  const roleRaw = (sessionClaims?.metadata as any)?.role as string | undefined;
   const counselorStatus = (sessionClaims?.metadata as any)?.counselor_status;
+  const role = roleRaw ?? 'student';
+  const hasRole = Boolean(roleRaw);
   const isCounselor = role === 'counselor';
   const isApplicant = role === 'applicant' || counselorStatus === 'pending';
   const isStudent = role === 'student';
@@ -43,7 +45,8 @@ export default clerkMiddleware(async (auth, req) => {
 
   // Verify page: only applicants/counselors
   if (path.startsWith('/verify-counselor')) {
-    if (isCounselor || isApplicant) return NextResponse.next();
+    // Allow if counselor or applicant, or if no role yet (so page can set role to applicant)
+    if (isCounselor || isApplicant || !hasRole) return NextResponse.next();
     if (isStudent) {
       return NextResponse.redirect(new URL('/dashboard', req.url));
     }

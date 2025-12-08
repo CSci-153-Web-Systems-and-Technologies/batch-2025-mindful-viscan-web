@@ -20,7 +20,6 @@ export default function SignUpCounselorPage() {
               routing="path"
               path="/sign-up-counselor"
               signInUrl="/sign-in"
-              forceRedirectUrl="/verify-counselor"
               afterSignUpUrl="/post-sign-up-counselor"
               appearance={{
                 elements: {
