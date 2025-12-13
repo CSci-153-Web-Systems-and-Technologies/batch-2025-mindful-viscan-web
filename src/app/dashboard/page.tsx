@@ -337,17 +337,22 @@ export default function StudentDashboard() {
 
     try {
       const token = await session.getToken({ template: 'supabase' });
+      console.log('DEBUG: Token retrieved?', !!token, 'Length:', token?.length);
       const supabase = createAuthenticatedClient(token || '');
 
       setIsSavingMood(true);
 
       // Get user's Supabase ID (same logic as sessions)
       let userId = user.id;
-      const { data: userData } = await supabase
+      const { data: userData, error: userFetchError } = await supabase
         .from('users')
         .select('id')
         .eq('id', user.id)
         .single();
+
+      if (userFetchError) {
+        console.error('DEBUG: User fetch error:', userFetchError);
+      }
 
       if (!userData) {
         const { data: userDataByClerkId } = await supabase
