@@ -8,17 +8,13 @@ create table public.users (
 );
 
 -- 2. COUNSELING SESSIONS (The Connection)
--- Updated with Title, Topics, and Optional Counselor
 create table public.counseling_sessions (
   id uuid primary key default gen_random_uuid(),
   student_id text references public.users(id),
   counselor_id text references public.users(id), -- Nullable (empty until accepted)
   status text, -- 'pending', 'active', 'closed', 'cancelled'
-  
-  -- The new columns we added:
   title text, 
   type text check (type in ('Academic', 'Health', 'Social', 'Personal')),
-  
   scheduled_at timestamp with time zone,
   created_at timestamp with time zone default now()
 );
@@ -55,4 +51,48 @@ create table public.resources (
   type text, -- 'Article', 'Video'
   content text, -- or URL
   created_at timestamp with time zone default now()
+);
+
+-- ==========================================
+-- ROW LEVEL SECURITY (RLS) POLICIES
+-- ==========================================
+
+-- 1. USERS: Allow users to read their own profile
+ALTER TABLE "public"."users" ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "User can read own profile" ON "public"."users"
+AS PERMISSIVE FOR SELECT TO authenticated
+USING ( (select auth.jwt() ->> 'sub') = id );
+
+-- 2. MOOD LOGS: Owner only
+ALTER TABLE "public"."mood_logs" ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Owner only mood insert" ON "public"."mood_logs"
+AS PERMISSIVE FOR INSERT TO authenticated
+WITH CHECK ( (select auth.jwt() ->> 'sub') = user_id );
+
+CREATE POLICY "Owner only mood select" ON "public"."mood_logs"
+AS PERMISSIVE FOR SELECT TO authenticated
+USING ( (select auth.jwt() ->> 'sub') = user_id );
+
+-- 3. THOUGHTS: Owner only
+ALTER TABLE "public"."thoughts" ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Owner only thought insert" ON "public"."thoughts"
+AS PERMISSIVE FOR INSERT TO authenticated
+WITH CHECK ( (select auth.jwt() ->> 'sub') = user_id );
+
+CREATE POLICY "Owner only thought select" ON "public"."thoughts"
+AS PERMISSIVE FOR SELECT TO authenticated
+USING ( (select auth.jwt() ->> 'sub') = user_id );
+
+-- 4. COUNSELING SESSIONS: Students and Counselors can see their sessions
+ALTER TABLE "public"."counseling_sessions" ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Owner only session select" ON "public"."counseling_sessions"
+AS PERMISSIVE FOR SELECT TO authenticated
+USING ( 
+  (select auth.jwt() ->> 'sub') = student_id 
+  OR 
+  (select auth.jwt() ->> 'sub') = counselor_id 
 );
