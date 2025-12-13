@@ -28,6 +28,13 @@ export default function StudentDashboard() {
   
   // Calendar state
   const [currentDate, setCurrentDate] = useState(new Date());
+  
+  // Mood & Thoughts state
+  const [selectedMood, setSelectedMood] = useState<number | null>(null);
+  const [thoughts, setThoughts] = useState('');
+  const [isSavingMood, setIsSavingMood] = useState(false);
+  const [isSavingThoughts, setIsSavingThoughts] = useState(false);
+  const maxThoughtsLength = 50;
 
   // Fetch counseling sessions
   useEffect(() => {
@@ -39,35 +46,39 @@ export default function StudentDashboard() {
         
         // Try to find user in Supabase - check if id matches Clerk userId or if there's a clerk_id field
         let studentId = user.id;
+        let userFound = false;
         
         // First try: assume users.id matches Clerk userId
-        const { data: userData } = await supabase
+        const { data: userData, error: userError } = await supabase
           .from('users')
           .select('id')
           .eq('id', user.id)
           .single();
 
-        // If not found, try clerk_id field
-        if (!userData) {
-          const { data: userDataByClerkId } = await supabase
+        if (userData && !userError) {
+          studentId = userData.id;
+          userFound = true;
+        } else {
+          // If not found, try clerk_id field
+          const { data: userDataByClerkId, error: clerkIdError } = await supabase
             .from('users')
             .select('id')
             .eq('clerk_id', user.id)
             .single();
           
-          if (userDataByClerkId) {
+          if (userDataByClerkId && !clerkIdError) {
             studentId = userDataByClerkId.id;
+            userFound = true;
+          } else {
+            // User not found in Supabase - this is okay, they might not have any sessions yet
+            console.log('User not found in Supabase users table. This is normal for new users.');
+            setSessions([]);
+            setLoading(false);
+            return;
           }
-        } else {
-          studentId = userData.id;
         }
 
         // Fetch counseling sessions
-        // Try with join first, fallback to separate queries if needed
-        let sessionsData: any[] = [];
-        let sessionsError: any = null;
-
-        // Attempt 1: Try with foreign key join
         const { data: joinedData, error: joinError } = await supabase
           .from('counseling_sessions')
           .select(`
@@ -80,51 +91,85 @@ export default function StudentDashboard() {
           .eq('student_id', studentId)
           .order('scheduled_at', { ascending: false });
 
-        if (!joinError && joinedData) {
-          sessionsData = joinedData;
+        if (joinError) {
+          // Log detailed error information
+          const errorInfo: any = {
+            message: joinError.message || 'Unknown error',
+            details: joinError.details || 'No details available',
+            hint: joinError.hint || 'No hint available',
+            code: joinError.code || 'No error code',
+          };
           
-          // Fetch counselor info separately if counselor_id exists
-          const counselorIds = [...new Set(joinedData.map((s: any) => s.counselor_id).filter(Boolean))];
+          // Log the full error object
+          console.error('Error fetching counseling sessions:', errorInfo);
+          console.error('Full error object:', JSON.stringify(joinError, null, 2));
           
-          if (counselorIds.length > 0) {
-            const { data: counselorsData } = await supabase
-              .from('users')
-              .select('id, full_name, email')
-              .in('id', counselorIds);
-
-            // Map counselor data to sessions
-            const counselorsMap = new Map(
-              (counselorsData || []).map((c: any) => [c.id, c])
-            );
-
-            sessionsData = sessionsData.map((session: any) => ({
-              ...session,
-              counselor: session.counselor_id ? (counselorsMap.get(session.counselor_id) || null) : null,
-            }));
+          // Common error: Table doesn't exist or RLS policy issue
+          if (joinError.code === 'PGRST116' || joinError.message?.includes('relation') || joinError.message?.includes('does not exist')) {
+            console.warn('Possible issue: Table "counseling_sessions" may not exist or RLS policies may be blocking access.');
           }
-        } else {
-          sessionsError = joinError;
+          
+          setSessions([]);
+          return;
         }
 
-        if (sessionsError) {
-          console.error('Error fetching sessions:', sessionsError);
-        } else {
-          // Transform data to match our interface
-          const transformedSessions = sessionsData.map((session: any) => ({
-            id: session.id,
-            status: session.status || 'Pending',
-            type: session.type || 'General',
-            scheduled_at: session.scheduled_at,
-            counselor: session.counselor ? {
-              id: session.counselor.id,
-              full_name: session.counselor.full_name,
-              email: session.counselor.email,
-            } : null,
-          }));
-          setSessions(transformedSessions);
+        if (!joinedData) {
+          setSessions([]);
+          return;
         }
+
+        let sessionsData = joinedData;
+        
+        // Fetch counselor info separately if counselor_id exists
+        const counselorIds = [...new Set(joinedData.map((s: any) => s.counselor_id).filter(Boolean))];
+        
+        if (counselorIds.length > 0) {
+          const { data: counselorsData, error: counselorsError } = await supabase
+            .from('users')
+            .select('id, full_name, email')
+            .in('id', counselorIds);
+
+          if (counselorsError) {
+            console.error('Error fetching counselors:', {
+              message: counselorsError.message,
+              details: counselorsError.details,
+              hint: counselorsError.hint,
+              code: counselorsError.code,
+              error: counselorsError
+            });
+          }
+
+          // Map counselor data to sessions (even if there was an error, continue with available data)
+          const counselorsMap = new Map(
+            (counselorsData || []).map((c: any) => [c.id, c])
+          );
+
+          sessionsData = sessionsData.map((session: any) => ({
+            ...session,
+            counselor: session.counselor_id ? (counselorsMap.get(session.counselor_id) || null) : null,
+          }));
+        }
+
+        // Transform data to match our interface
+        const transformedSessions = sessionsData.map((session: any) => ({
+          id: session.id,
+          status: session.status || 'Pending',
+          type: session.type || 'General',
+          scheduled_at: session.scheduled_at,
+          counselor: session.counselor ? {
+            id: session.counselor.id,
+            full_name: session.counselor.full_name,
+            email: session.counselor.email,
+          } : null,
+        }));
+        setSessions(transformedSessions);
       } catch (error) {
-        console.error('Error fetching sessions:', error);
+        console.error('Unexpected error fetching sessions:', {
+          error,
+          message: error instanceof Error ? error.message : 'Unknown error',
+          stack: error instanceof Error ? error.stack : undefined
+        });
+        setSessions([]);
       } finally {
         setLoading(false);
       }
@@ -278,6 +323,110 @@ export default function StudentDashboard() {
   for (let i = currentYear - 5; i <= currentYear + 5; i++) {
     yearOptions.push(i);
   }
+
+  // Mood emojis (1 = very happy, 5 = very sad)
+  const moodEmojis = ['😊', '🙂', '😐', '😔', '😢'];
+  
+  // Handle mood selection and save to Supabase
+  const handleMoodClick = async (moodRating: number) => {
+    if (!user?.id || isSavingMood) return;
+    
+    try {
+      setIsSavingMood(true);
+      setSelectedMood(moodRating);
+      
+      // Get user's Supabase ID (same logic as sessions)
+      let userId = user.id;
+      const { data: userData } = await supabase
+        .from('users')
+        .select('id')
+        .eq('id', user.id)
+        .single();
+      
+      if (!userData) {
+        const { data: userDataByClerkId } = await supabase
+          .from('users')
+          .select('id')
+          .eq('clerk_id', user.id)
+          .single();
+        
+        if (userDataByClerkId) {
+          userId = userDataByClerkId.id;
+        }
+      } else {
+        userId = userData.id;
+      }
+      
+      // Insert mood log
+      const { error } = await supabase
+        .from('mood_logs')
+        .insert({
+          user_id: userId,
+          mood_rating: moodRating,
+          note: null,
+        });
+      
+      if (error) {
+        console.error('Error saving mood:', error);
+        setSelectedMood(null);
+      }
+    } catch (error) {
+      console.error('Error saving mood:', error);
+      setSelectedMood(null);
+    } finally {
+      setIsSavingMood(false);
+    }
+  };
+  
+  // Handle thoughts save to Supabase
+  const handleSaveThoughts = async () => {
+    if (!user?.id || !thoughts.trim() || isSavingThoughts) return;
+    
+    try {
+      setIsSavingThoughts(true);
+      
+      // Get user's Supabase ID
+      let userId = user.id;
+      const { data: userData } = await supabase
+        .from('users')
+        .select('id')
+        .eq('id', user.id)
+        .single();
+      
+      if (!userData) {
+        const { data: userDataByClerkId } = await supabase
+          .from('users')
+          .select('id')
+          .eq('clerk_id', user.id)
+          .single();
+        
+        if (userDataByClerkId) {
+          userId = userDataByClerkId.id;
+        }
+      } else {
+        userId = userData.id;
+      }
+      
+      // Insert thought
+      const { error } = await supabase
+        .from('thoughts')
+        .insert({
+          user_id: userId,
+          content: thoughts.trim(),
+        });
+      
+      if (error) {
+        console.error('Error saving thoughts:', error);
+      } else {
+        // Clear thoughts after successful save
+        setThoughts('');
+      }
+    } catch (error) {
+      console.error('Error saving thoughts:', error);
+    } finally {
+      setIsSavingThoughts(false);
+    }
+  };
 
   return (
     <main className="flex min-h-screen flex-col p-0 bg-[linear-gradient(110deg,var(--color-mindful-green)_0%,var(--color-mindful-dark)_100%)]">
@@ -520,7 +669,89 @@ export default function StudentDashboard() {
                   </div>
                 </div>
                 
-                {/* Mood & Thoughts section will go here in Step 4 */}
+                {/* Mood & Thoughts Section */}
+                <div className="rounded-lg bg-[#031207] border border-gray-900/50 shadow-[4px_4px_0px_0px_rgba(34,197,94,0.15)] p-6">
+                  {/* Mood Selection */}
+                  <div className="mb-6">
+                    <div className="flex justify-center gap-4">
+                      {moodEmojis.map((emoji, index) => {
+                        const moodRating = index + 1;
+                        const isSelected = selectedMood === moodRating;
+                        return (
+                          <button
+                            key={moodRating}
+                            onClick={() => handleMoodClick(moodRating)}
+                            disabled={isSavingMood}
+                            className={`
+                              w-12 h-12 rounded-full flex items-center justify-center text-2xl
+                              transition-all duration-200
+                              ${isSelected 
+                                ? 'bg-mindful-green/30 border-2 border-mindful-green scale-110' 
+                                : 'bg-[#0F1E0F] border-2 border-gray-700 hover:border-mindful-green/50 hover:scale-105'
+                              }
+                              ${isSavingMood ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}
+                            `}
+                            aria-label={`Mood rating ${moodRating}`}
+                          >
+                            {emoji}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                  
+                  {/* Thoughts Input */}
+                  <div className="space-y-2">
+                    <textarea
+                      value={thoughts}
+                      onChange={(e) => {
+                        const value = e.target.value;
+                        if (value.length <= maxThoughtsLength) {
+                          setThoughts(value);
+                        }
+                      }}
+                      placeholder="Thoughts for the day?"
+                      rows={4}
+                      className="w-full px-4 py-3 bg-[#0F1E0F] border border-gray-700 rounded-lg text-gray-200 placeholder-gray-500 focus:outline-none focus:border-mindful-green resize-none"
+                    />
+                    
+                    {/* Character count and save button */}
+                    <div className="flex items-center justify-between">
+                      <span className="text-gray-400 text-sm">
+                        {thoughts.length}/{maxThoughtsLength}
+                      </span>
+                      <button
+                        onClick={handleSaveThoughts}
+                        disabled={!thoughts.trim() || isSavingThoughts || thoughts.length === 0}
+                        className={`
+                          flex items-center gap-2 px-4 py-2 rounded-lg transition-colors
+                          ${thoughts.trim() && !isSavingThoughts
+                            ? 'bg-mindful-green hover:bg-[#5a9f5f] text-white cursor-pointer'
+                            : 'bg-[#0F1E0F] border border-gray-700 text-gray-500 cursor-not-allowed'
+                          }
+                        `}
+                        aria-label="Save thoughts"
+                      >
+                        {isSavingThoughts ? (
+                          <>
+                            <svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                            </svg>
+                            <span>Saving...</span>
+                          </>
+                        ) : (
+                          <>
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                            </svg>
+                            <span>Save</span>
+                          </>
+                        )}
+                      </button>
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
