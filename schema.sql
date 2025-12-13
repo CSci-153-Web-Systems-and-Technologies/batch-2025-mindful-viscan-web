@@ -1,0 +1,58 @@
+-- 1. USERS (Synced with Clerk)
+create table public.users (
+  id text primary key, -- This matches the Clerk User ID (e.g. user_2p...)
+  full_name text,
+  role text, -- 'student', 'counselor', or 'admin'
+  -- Email column removed to match current production DB
+  created_at timestamp with time zone default now()
+);
+
+-- 2. COUNSELING SESSIONS (The Connection)
+-- Updated with Title, Topics, and Optional Counselor
+create table public.counseling_sessions (
+  id uuid primary key default gen_random_uuid(),
+  student_id text references public.users(id),
+  counselor_id text references public.users(id), -- Nullable (empty until accepted)
+  status text, -- 'pending', 'active', 'closed', 'cancelled'
+  
+  -- The new columns we added:
+  title text, 
+  type text check (type in ('Academic', 'Health', 'Social', 'Personal')),
+  
+  scheduled_at timestamp with time zone,
+  created_at timestamp with time zone default now()
+);
+
+-- 3. MESSAGES (Chat History)
+create table public.messages (
+  session_id uuid references public.counseling_sessions(id) on delete cascade,
+  sender_id text references public.users(id),
+  content text,
+  created_at timestamp with time zone default now()
+);
+
+-- 4. MOOD LOGS (Daily Tracking)
+create table public.mood_logs (
+  id uuid primary key default gen_random_uuid(),
+  user_id text references public.users(id),
+  rating int, -- 1 to 5
+  note text,
+  created_at timestamp with time zone default now()
+);
+
+-- 5. THOUGHTS (Journaling)
+create table public.thoughts (
+  id uuid primary key default gen_random_uuid(),
+  user_id text references public.users(id),
+  content text,
+  created_at timestamp with time zone default now()
+);
+
+-- 6. RESOURCES (Library)
+create table public.resources (
+  id uuid primary key default gen_random_uuid(),
+  title text,
+  type text, -- 'Article', 'Video'
+  content text, -- or URL
+  created_at timestamp with time zone default now()
+);
