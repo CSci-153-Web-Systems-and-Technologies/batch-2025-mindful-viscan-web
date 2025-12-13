@@ -179,10 +179,73 @@ export default function StudentDashboard() {
       }
     };
 
+    const fetchDailyStatus = async () => {
+      if (!user?.id || !session) return;
+
+      try {
+        const token = await session.getToken({ template: 'supabase' });
+        const supabase = createAuthenticatedClient(token || '');
+
+        // Get user ID
+        let userId = user.id;
+        const { data: userData } = await supabase
+          .from('users')
+          .select('id')
+          .eq('id', user.id)
+          .single();
+
+        if (!userData) {
+          const { data: userDataByClerkId } = await supabase
+            .from('users')
+            .select('id')
+            .eq('clerk_id', user.id)
+            .single();
+
+          if (userDataByClerkId) {
+            userId = userDataByClerkId.id;
+          } else {
+            return;
+          }
+        } else {
+          userId = userData.id;
+        }
+
+        const todayStart = new Date();
+        todayStart.setHours(0, 0, 0, 0);
+
+        // Fetch today's mood
+        const { data: moodData } = await supabase
+          .from('mood_logs')
+          .select('rating')
+          .eq('user_id', userId)
+          .gte('created_at', todayStart.toISOString())
+          .maybeSingle();
+
+        if (moodData) {
+          setSelectedMood(moodData.rating);
+        }
+
+        // Fetch today's thoughts
+        const { data: thoughtData } = await supabase
+          .from('thoughts')
+          .select('content')
+          .eq('user_id', userId)
+          .gte('created_at', todayStart.toISOString())
+          .maybeSingle();
+
+        if (thoughtData) {
+          setThoughts(thoughtData.content);
+        }
+      } catch (error) {
+        console.error('Error fetching daily status:', error);
+      }
+    };
+
     if (isLoaded && user) {
       fetchSessions();
+      fetchDailyStatus();
     }
-  }, [user, isLoaded]);
+  }, [user, isLoaded, session]);
 
   if (!isLoaded) {
     return (
@@ -337,7 +400,6 @@ export default function StudentDashboard() {
 
     try {
       const token = await session.getToken({ template: 'supabase' });
-      console.log('DEBUG: Token retrieved?', !!token, 'Length:', token?.length);
       const supabase = createAuthenticatedClient(token || '');
 
       setIsSavingMood(true);
@@ -351,7 +413,7 @@ export default function StudentDashboard() {
         .single();
 
       if (userFetchError) {
-        console.error('DEBUG: User fetch error:', userFetchError);
+        console.error('Error fetching user data:', userFetchError);
       }
 
       if (!userData) {
@@ -382,7 +444,7 @@ export default function StudentDashboard() {
         .gte('created_at', todayStart.toISOString());
 
       if (count && count > 0) {
-        alert("You have already logged your mood for today.");
+        console.warn("You have already logged your mood for today.");
         setIsSavingMood(false);
         return;
       }
@@ -457,7 +519,7 @@ export default function StudentDashboard() {
         .gte('created_at', todayStart.toISOString());
 
       if (count && count > 0) {
-        alert("You have already logged your thoughts for today.");
+        console.warn("You have already logged your thoughts for today.");
         setIsSavingThoughts(false);
         return;
       }
