@@ -1,9 +1,9 @@
 'use client';
 
-import { useUser } from '@clerk/nextjs';
+import { useUser, useSession } from '@clerk/nextjs';
 import { useEffect, useState } from 'react';
 import NavBar from '@/app/components/NavBar';
-import { supabase } from '@/lib/supabase';
+import { createAuthenticatedClient } from '@/lib/supabaseClient';
 
 interface CounselingSession {
   id: string;
@@ -19,16 +19,17 @@ interface CounselingSession {
 
 export default function StudentDashboard() {
   const { user, isLoaded } = useUser();
+  const { session } = useSession();
   const [sessions, setSessions] = useState<CounselingSession[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('');
   const [selectedRows, setSelectedRows] = useState<Set<string>>(new Set());
   const [currentPage, setCurrentPage] = useState(1);
   const rowsPerPage = 5;
-  
+
   // Calendar state
   const [currentDate, setCurrentDate] = useState(new Date());
-  
+
   // Mood & Thoughts state
   const [selectedMood, setSelectedMood] = useState<number | null>(null);
   const [thoughts, setThoughts] = useState('');
@@ -39,15 +40,18 @@ export default function StudentDashboard() {
   // Fetch counseling sessions
   useEffect(() => {
     const fetchSessions = async () => {
-      if (!user?.id) return;
+      if (!user?.id || !session) return;
+
+      const token = await session.getToken({ template: 'supabase' });
+      const supabase = createAuthenticatedClient(token || '');
 
       try {
         setLoading(true);
-        
+
         // Try to find user in Supabase - check if id matches Clerk userId or if there's a clerk_id field
         let studentId = user.id;
         let userFound = false;
-        
+
         // First try: assume users.id matches Clerk userId
         const { data: userData, error: userError } = await supabase
           .from('users')
@@ -65,7 +69,7 @@ export default function StudentDashboard() {
             .select('id')
             .eq('clerk_id', user.id)
             .single();
-          
+
           if (userDataByClerkId && !clerkIdError) {
             studentId = userDataByClerkId.id;
             userFound = true;
@@ -99,16 +103,16 @@ export default function StudentDashboard() {
             hint: joinError.hint || 'No hint available',
             code: joinError.code || 'No error code',
           };
-          
+
           // Log the full error object
           console.error('Error fetching counseling sessions:', errorInfo);
           console.error('Full error object:', JSON.stringify(joinError, null, 2));
-          
+
           // Common error: Table doesn't exist or RLS policy issue
           if (joinError.code === 'PGRST116' || joinError.message?.includes('relation') || joinError.message?.includes('does not exist')) {
             console.warn('Possible issue: Table "counseling_sessions" may not exist or RLS policies may be blocking access.');
           }
-          
+
           setSessions([]);
           return;
         }
@@ -119,10 +123,10 @@ export default function StudentDashboard() {
         }
 
         let sessionsData = joinedData;
-        
+
         // Fetch counselor info separately if counselor_id exists
         const counselorIds = [...new Set(joinedData.map((s: any) => s.counselor_id).filter(Boolean))];
-        
+
         if (counselorIds.length > 0) {
           const { data: counselorsData, error: counselorsError } = await supabase
             .from('users')
@@ -249,7 +253,7 @@ export default function StudentDashboard() {
   // Calendar functions
   const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
   const dayNames = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
-  
+
   const getDaysInMonth = (date: Date) => {
     const year = date.getFullYear();
     const month = date.getMonth();
@@ -257,29 +261,29 @@ export default function StudentDashboard() {
     const lastDay = new Date(year, month + 1, 0);
     const daysInMonth = lastDay.getDate();
     const startingDayOfWeek = firstDay.getDay();
-    
+
     const days: Array<{ day: number; isCurrentMonth: boolean }> = [];
-    
+
     // Add days from previous month
     const prevMonthLastDay = new Date(year, month, 0).getDate();
     for (let i = startingDayOfWeek - 1; i >= 0; i--) {
       days.push({ day: prevMonthLastDay - i, isCurrentMonth: false });
     }
-    
+
     // Add days from current month
     for (let i = 1; i <= daysInMonth; i++) {
       days.push({ day: i, isCurrentMonth: true });
     }
-    
+
     // Add days from next month to fill the grid (6 rows * 7 days = 42)
     const remainingDays = 42 - days.length;
     for (let i = 1; i <= remainingDays; i++) {
       days.push({ day: i, isCurrentMonth: false });
     }
-    
+
     return days;
   };
-  
+
   const isToday = (day: number, date: Date, isCurrentMonth: boolean) => {
     if (!isCurrentMonth) return false;
     const today = new Date();
@@ -289,7 +293,7 @@ export default function StudentDashboard() {
       date.getFullYear() === today.getFullYear()
     );
   };
-  
+
   const navigateMonth = (direction: 'prev' | 'next') => {
     setCurrentDate(prev => {
       const newDate = new Date(prev);
@@ -301,23 +305,23 @@ export default function StudentDashboard() {
       return newDate;
     });
   };
-  
+
   const handleMonthChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const newDate = new Date(currentDate);
     newDate.setMonth(parseInt(e.target.value));
     setCurrentDate(newDate);
   };
-  
+
   const handleYearChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const newDate = new Date(currentDate);
     newDate.setFullYear(parseInt(e.target.value));
     setCurrentDate(newDate);
   };
-  
+
   const calendarDays = getDaysInMonth(currentDate);
   const currentYear = currentDate.getFullYear();
   const currentMonth = currentDate.getMonth();
-  
+
   // Generate year options (current year ± 5 years)
   const yearOptions = [];
   for (let i = currentYear - 5; i <= currentYear + 5; i++) {
@@ -326,15 +330,17 @@ export default function StudentDashboard() {
 
   // Mood emojis (1 = very happy, 5 = very sad)
   const moodEmojis = ['😊', '🙂', '😐', '😔', '😢'];
-  
+
   // Handle mood selection and save to Supabase
   const handleMoodClick = async (moodRating: number) => {
-    if (!user?.id || isSavingMood) return;
-    
+    if (!user?.id || isSavingMood || !session) return;
+
     try {
+      const token = await session.getToken({ template: 'supabase' });
+      const supabase = createAuthenticatedClient(token || '');
+
       setIsSavingMood(true);
-      setSelectedMood(moodRating);
-      
+
       // Get user's Supabase ID (same logic as sessions)
       let userId = user.id;
       const { data: userData } = await supabase
@@ -342,32 +348,54 @@ export default function StudentDashboard() {
         .select('id')
         .eq('id', user.id)
         .single();
-      
+
       if (!userData) {
         const { data: userDataByClerkId } = await supabase
           .from('users')
           .select('id')
           .eq('clerk_id', user.id)
           .single();
-        
+
         if (userDataByClerkId) {
           userId = userDataByClerkId.id;
+        } else {
+          console.error('User not synced to database.');
+          return;
         }
       } else {
         userId = userData.id;
       }
-      
+
+      // Check if already logged today
+      const todayStart = new Date();
+      todayStart.setHours(0, 0, 0, 0);
+
+      const { count } = await supabase
+        .from('mood_logs')
+        .select('*', { count: 'exact', head: true })
+        .eq('user_id', userId)
+        .gte('created_at', todayStart.toISOString());
+
+      if (count && count > 0) {
+        alert("You have already logged your mood for today.");
+        setIsSavingMood(false);
+        return;
+      }
+
+      setSelectedMood(moodRating);
+
       // Insert mood log
       const { error } = await supabase
         .from('mood_logs')
         .insert({
           user_id: userId,
-          mood_rating: moodRating,
+          rating: moodRating,
           note: null,
         });
-      
+
       if (error) {
         console.error('Error saving mood:', error);
+        console.error('Full error details:', JSON.stringify(error, null, 2));
         setSelectedMood(null);
       }
     } catch (error) {
@@ -377,14 +405,17 @@ export default function StudentDashboard() {
       setIsSavingMood(false);
     }
   };
-  
+
   // Handle thoughts save to Supabase
   const handleSaveThoughts = async () => {
-    if (!user?.id || !thoughts.trim() || isSavingThoughts) return;
-    
+    if (!user?.id || !thoughts.trim() || isSavingThoughts || !session) return;
+
     try {
+      const token = await session.getToken({ template: 'supabase' });
+      const supabase = createAuthenticatedClient(token || '');
+
       setIsSavingThoughts(true);
-      
+
       // Get user's Supabase ID
       let userId = user.id;
       const { data: userData } = await supabase
@@ -392,21 +423,40 @@ export default function StudentDashboard() {
         .select('id')
         .eq('id', user.id)
         .single();
-      
+
       if (!userData) {
         const { data: userDataByClerkId } = await supabase
           .from('users')
           .select('id')
           .eq('clerk_id', user.id)
           .single();
-        
+
         if (userDataByClerkId) {
           userId = userDataByClerkId.id;
+        } else {
+          console.error('User not synced to database.');
+          return;
         }
       } else {
         userId = userData.id;
       }
-      
+
+      // Check if already logged today
+      const todayStart = new Date();
+      todayStart.setHours(0, 0, 0, 0);
+
+      const { count } = await supabase
+        .from('thoughts')
+        .select('*', { count: 'exact', head: true })
+        .eq('user_id', userId)
+        .gte('created_at', todayStart.toISOString());
+
+      if (count && count > 0) {
+        alert("You have already logged your thoughts for today.");
+        setIsSavingThoughts(false);
+        return;
+      }
+
       // Insert thought
       const { error } = await supabase
         .from('thoughts')
@@ -414,12 +464,14 @@ export default function StudentDashboard() {
           user_id: userId,
           content: thoughts.trim(),
         });
-      
+
       if (error) {
         console.error('Error saving thoughts:', error);
+        console.error('Full error details:', JSON.stringify(error, null, 2));
       } else {
         // Clear thoughts after successful save
         setThoughts('');
+        alert("Thoughts saved successfully!");
       }
     } catch (error) {
       console.error('Error saving thoughts:', error);
@@ -443,141 +495,140 @@ export default function StudentDashboard() {
                 <h1 className="text-2xl md:text-3xl lg:text-4xl font-kodchasan font-bold mb-8 bg-gradient-to-r from-[#42734D] via-[#5A9F5F] to-[#6A9F6F] bg-clip-text text-transparent">
                   Welcome! How are you today, {userName}?
                 </h1>
-                
+
                 {/* Session History Section - Card with green border */}
                 <div className="flex flex-col flex-1 rounded-lg bg-[#031207] border-t border-l border-gray-900/50 border-r-2 border-b-2 border-r-mindful-green/60 border-b-mindful-green/60 shadow-[4px_4px_0px_0px_rgba(34,197,94,0.15)] p-6">
                   <div className="flex flex-col flex-1 gap-4">
                     <h2 className="text-gray-200 text-lg font-medium">Session History</h2>
-                  
-                  {/* Filter and Columns */}
-                  <div className="flex gap-3">
-                    <input
-                      type="text"
-                      placeholder="Filter sessions..."
-                      value={filter}
-                      onChange={(e) => {
-                        setFilter(e.target.value);
-                        setCurrentPage(1);
-                      }}
-                      className="flex-1 px-4 py-2 bg-[#0F1E0F] border border-gray-700 rounded-lg text-gray-200 placeholder-gray-500 focus:outline-none focus:border-mindful-green"
-                    />
-                    <button className="px-4 py-2 bg-[#0F1E0F] border border-gray-700 rounded-lg text-gray-200 hover:bg-[#1a2f1a] transition-colors flex items-center gap-2">
-                      Columns
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                      </svg>
-                    </button>
-                  </div>
 
-                  {/* Table */}
-                  {loading ? (
-                    <div className="space-y-3">
-                      {[1, 2, 3, 4, 5].map((i) => (
-                        <div key={i} className="h-12 bg-[#0F1E0F] rounded animate-pulse" />
-                      ))}
+                    {/* Filter and Columns */}
+                    <div className="flex gap-3">
+                      <input
+                        type="text"
+                        placeholder="Filter sessions..."
+                        value={filter}
+                        onChange={(e) => {
+                          setFilter(e.target.value);
+                          setCurrentPage(1);
+                        }}
+                        className="flex-1 px-4 py-2 bg-[#0F1E0F] border border-gray-700 rounded-lg text-gray-200 placeholder-gray-500 focus:outline-none focus:border-mindful-green"
+                      />
+                      <button className="px-4 py-2 bg-[#0F1E0F] border border-gray-700 rounded-lg text-gray-200 hover:bg-[#1a2f1a] transition-colors flex items-center gap-2">
+                        Columns
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                        </svg>
+                      </button>
                     </div>
-                  ) : (
-                    <>
-                      <div className="overflow-x-auto">
-                        <table className="w-full">
-                          <thead>
-                            <tr className="bg-[#0F1E0F] border-b border-gray-700">
-                              <th className="px-4 py-3 text-left">
-                                <input
-                                  type="checkbox"
-                                  checked={selectedRows.size === paginatedSessions.length && paginatedSessions.length > 0}
-                                  onChange={toggleAllSelection}
-                                  className="rounded border-gray-600 bg-[#0F1E0F] text-mindful-green focus:ring-mindful-green"
-                                />
-                              </th>
-                              <th className="px-4 py-3 text-left text-gray-200 text-sm font-medium">Status</th>
-                              <th className="px-4 py-3 text-left text-gray-200 text-sm font-medium">
-                                <div className="flex items-center gap-2">
-                                  Counselor
-                                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4" />
-                                  </svg>
-                                </div>
-                              </th>
-                              <th className="px-4 py-3 text-left text-gray-200 text-sm font-medium">Date</th>
-                              <th className="px-4 py-3 text-left text-gray-200 text-sm font-medium">Session Type</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {paginatedSessions.length === 0 ? (
-                              <tr>
-                                <td colSpan={5} className="px-4 py-8 text-center text-gray-400">
-                                  No sessions found
-                                </td>
+
+                    {/* Table */}
+                    {loading ? (
+                      <div className="space-y-3">
+                        {[1, 2, 3, 4, 5].map((i) => (
+                          <div key={i} className="h-12 bg-[#0F1E0F] rounded animate-pulse" />
+                        ))}
+                      </div>
+                    ) : (
+                      <>
+                        <div className="overflow-x-auto">
+                          <table className="w-full">
+                            <thead>
+                              <tr className="bg-[#0F1E0F] border-b border-gray-700">
+                                <th className="px-4 py-3 text-left">
+                                  <input
+                                    type="checkbox"
+                                    checked={selectedRows.size === paginatedSessions.length && paginatedSessions.length > 0}
+                                    onChange={toggleAllSelection}
+                                    className="rounded border-gray-600 bg-[#0F1E0F] text-mindful-green focus:ring-mindful-green"
+                                  />
+                                </th>
+                                <th className="px-4 py-3 text-left text-gray-200 text-sm font-medium">Status</th>
+                                <th className="px-4 py-3 text-left text-gray-200 text-sm font-medium">
+                                  <div className="flex items-center gap-2">
+                                    Counselor
+                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4" />
+                                    </svg>
+                                  </div>
+                                </th>
+                                <th className="px-4 py-3 text-left text-gray-200 text-sm font-medium">Date</th>
+                                <th className="px-4 py-3 text-left text-gray-200 text-sm font-medium">Session Type</th>
                               </tr>
-                            ) : (
-                              paginatedSessions.map((session, index) => (
-                                <tr
-                                  key={session.id}
-                                  className={`border-b border-gray-800 ${
-                                    index % 2 === 0 ? 'bg-[#031207]' : 'bg-[#0a1a0a]'
-                                  } hover:bg-[#0F1E0F] transition-colors`}
-                                >
-                                  <td className="px-4 py-3">
-                                    <input
-                                      type="checkbox"
-                                      checked={selectedRows.has(session.id)}
-                                      onChange={() => toggleRowSelection(session.id)}
-                                      className="rounded border-gray-600 bg-[#0F1E0F] text-mindful-green focus:ring-mindful-green"
-                                    />
+                            </thead>
+                            <tbody>
+                              {paginatedSessions.length === 0 ? (
+                                <tr>
+                                  <td colSpan={5} className="px-4 py-8 text-center text-gray-400">
+                                    No sessions found
                                   </td>
-                                  <td className="px-4 py-3 text-gray-200 text-sm">{session.status || 'N/A'}</td>
-                                  <td className="px-4 py-3 text-gray-200 text-sm">
-                                    {getCounselorDisplay(session.counselor)}
-                                  </td>
-                                  <td className="px-4 py-3 text-gray-200 text-sm">
-                                    {session.scheduled_at ? formatDate(session.scheduled_at) : 'N/A'}
-                                  </td>
-                                  <td className="px-4 py-3 text-gray-200 text-sm">{session.type || 'N/A'}</td>
                                 </tr>
-                              ))
-                            )}
-                          </tbody>
-                        </table>
-                      </div>
-
-                      {/* Pagination and Selection Info */}
-                      <div className="flex items-center justify-between">
-                        <div className="text-gray-400 text-sm">
-                          {selectedRows.size} of {filteredSessions.length} row(s) selected.
+                              ) : (
+                                paginatedSessions.map((session, index) => (
+                                  <tr
+                                    key={session.id}
+                                    className={`border-b border-gray-800 ${index % 2 === 0 ? 'bg-[#031207]' : 'bg-[#0a1a0a]'
+                                      } hover:bg-[#0F1E0F] transition-colors`}
+                                  >
+                                    <td className="px-4 py-3">
+                                      <input
+                                        type="checkbox"
+                                        checked={selectedRows.has(session.id)}
+                                        onChange={() => toggleRowSelection(session.id)}
+                                        className="rounded border-gray-600 bg-[#0F1E0F] text-mindful-green focus:ring-mindful-green"
+                                      />
+                                    </td>
+                                    <td className="px-4 py-3 text-gray-200 text-sm">{session.status || 'N/A'}</td>
+                                    <td className="px-4 py-3 text-gray-200 text-sm">
+                                      {getCounselorDisplay(session.counselor)}
+                                    </td>
+                                    <td className="px-4 py-3 text-gray-200 text-sm">
+                                      {session.scheduled_at ? formatDate(session.scheduled_at) : 'N/A'}
+                                    </td>
+                                    <td className="px-4 py-3 text-gray-200 text-sm">{session.type || 'N/A'}</td>
+                                  </tr>
+                                ))
+                              )}
+                            </tbody>
+                          </table>
                         </div>
-                        <div className="flex gap-2">
+
+                        {/* Pagination and Selection Info */}
+                        <div className="flex items-center justify-between">
+                          <div className="text-gray-400 text-sm">
+                            {selectedRows.size} of {filteredSessions.length} row(s) selected.
+                          </div>
+                          <div className="flex gap-2">
+                            <button
+                              onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                              disabled={currentPage === 1}
+                              className="px-4 py-2 bg-[#0F1E0F] border border-gray-700 rounded-lg text-gray-200 hover:bg-[#1a2f1a] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                              Previous
+                            </button>
+                            <button
+                              onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                              disabled={currentPage === totalPages}
+                              className="px-4 py-2 bg-[#0F1E0F] border border-gray-700 rounded-lg text-gray-200 hover:bg-[#1a2f1a] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                              Next
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* Action Buttons - Pushed to bottom */}
+                        <div className="flex justify-end gap-3 mt-auto pt-4">
                           <button
-                            onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
-                            disabled={currentPage === 1}
+                            disabled={selectedRows.size === 0}
                             className="px-4 py-2 bg-[#0F1E0F] border border-gray-700 rounded-lg text-gray-200 hover:bg-[#1a2f1a] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                           >
-                            Previous
+                            Delete Selected
                           </button>
-                          <button
-                            onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
-                            disabled={currentPage === totalPages}
-                            className="px-4 py-2 bg-[#0F1E0F] border border-gray-700 rounded-lg text-gray-200 hover:bg-[#1a2f1a] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                          >
-                            Next
+                          <button className="px-4 py-2 bg-mindful-green hover:bg-[#5a9f5f] text-white rounded-lg transition-colors font-medium">
+                            Request new session
                           </button>
                         </div>
-                      </div>
-
-                      {/* Action Buttons - Pushed to bottom */}
-                      <div className="flex justify-end gap-3 mt-auto pt-4">
-                        <button
-                          disabled={selectedRows.size === 0}
-                          className="px-4 py-2 bg-[#0F1E0F] border border-gray-700 rounded-lg text-gray-200 hover:bg-[#1a2f1a] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                        >
-                          Delete Selected
-                        </button>
-                        <button className="px-4 py-2 bg-mindful-green hover:bg-[#5a9f5f] text-white rounded-lg transition-colors font-medium">
-                          Request new session
-                        </button>
-                      </div>
-                    </>
-                  )}
+                      </>
+                    )}
                   </div>
                 </div>
               </div>
@@ -587,7 +638,7 @@ export default function StudentDashboard() {
                 {/* Upcoming Events Calendar */}
                 <div className="rounded-lg bg-[#031207] border border-gray-900/50 shadow-[4px_4px_0px_0px_rgba(34,197,94,0.15)] p-6">
                   <h2 className="text-gray-200 text-lg font-medium mb-4">Upcoming Events</h2>
-                  
+
                   {/* Calendar Navigation */}
                   <div className="flex items-center justify-between mb-4">
                     <button
@@ -599,7 +650,7 @@ export default function StudentDashboard() {
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
                       </svg>
                     </button>
-                    
+
                     <div className="flex items-center gap-2">
                       <select
                         value={currentMonth}
@@ -624,7 +675,7 @@ export default function StudentDashboard() {
                         ))}
                       </select>
                     </div>
-                    
+
                     <button
                       onClick={() => navigateMonth('next')}
                       className="text-gray-200 hover:text-mindful-green transition-colors p-1"
@@ -635,7 +686,7 @@ export default function StudentDashboard() {
                       </svg>
                     </button>
                   </div>
-                  
+
                   {/* Calendar Grid */}
                   <div className="grid grid-cols-7 gap-1">
                     {/* Day headers */}
@@ -644,20 +695,20 @@ export default function StudentDashboard() {
                         {day}
                       </div>
                     ))}
-                    
+
                     {/* Calendar days */}
                     {calendarDays.map((dayInfo, index) => {
                       const { day, isCurrentMonth } = dayInfo;
                       const isTodayDate = isToday(day, currentDate, isCurrentMonth);
-                      
+
                       return (
                         <div
                           key={index}
                           className={`
                             aspect-square flex items-center justify-center text-sm
                             ${isCurrentMonth ? 'text-gray-200' : 'text-gray-500'}
-                            ${isTodayDate 
-                              ? 'bg-mindful-green/30 border-2 border-mindful-green rounded' 
+                            ${isTodayDate
+                              ? 'bg-mindful-green/30 border-2 border-mindful-green rounded'
                               : 'hover:bg-[#0F1E0F] rounded transition-colors cursor-pointer'
                             }
                           `}
@@ -668,7 +719,7 @@ export default function StudentDashboard() {
                     })}
                   </div>
                 </div>
-                
+
                 {/* Mood & Thoughts Section */}
                 <div className="rounded-lg bg-[#031207] border border-gray-900/50 shadow-[4px_4px_0px_0px_rgba(34,197,94,0.15)] p-6">
                   {/* Mood Selection */}
@@ -685,8 +736,8 @@ export default function StudentDashboard() {
                             className={`
                               w-12 h-12 rounded-full flex items-center justify-center text-2xl
                               transition-all duration-200
-                              ${isSelected 
-                                ? 'bg-mindful-green/30 border-2 border-mindful-green scale-110' 
+                              ${isSelected
+                                ? 'bg-mindful-green/30 border-2 border-mindful-green scale-110'
                                 : 'bg-[#0F1E0F] border-2 border-gray-700 hover:border-mindful-green/50 hover:scale-105'
                               }
                               ${isSavingMood ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}
@@ -699,7 +750,7 @@ export default function StudentDashboard() {
                       })}
                     </div>
                   </div>
-                  
+
                   {/* Thoughts Input */}
                   <div className="space-y-2">
                     <textarea
@@ -714,7 +765,7 @@ export default function StudentDashboard() {
                       rows={4}
                       className="w-full px-4 py-3 bg-[#0F1E0F] border border-gray-700 rounded-lg text-gray-200 placeholder-gray-500 focus:outline-none focus:border-mindful-green resize-none"
                     />
-                    
+
                     {/* Character count and save button */}
                     <div className="flex items-center justify-between">
                       <span className="text-gray-400 text-sm">
