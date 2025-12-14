@@ -1,8 +1,8 @@
 'use client';
 
 import { useUser } from '@clerk/nextjs';
-import { useState } from 'react';
-import { submitApplication } from '@/app/actions';
+import { useEffect, useState } from 'react';
+import { submitApplication, ensureApplicantMetadata } from '@/app/actions';
 import NavBar from '@/app/components/NavBar';
 
 export default function VerifyCounselorPage() {
@@ -12,6 +12,22 @@ export default function VerifyCounselorPage() {
     legalName: '',
     experience: '',
   });
+
+  const roleRaw = user?.publicMetadata?.role as string | undefined;
+  const counselorStatus = user?.publicMetadata?.counselor_status as string | undefined;
+
+  useEffect(() => {
+    const maybeEnsure = async () => {
+      if (!user) return;
+      // If no role/status, promote to applicant pending
+      if (!roleRaw && !counselorStatus) {
+        await ensureApplicantMetadata();
+        window.location.reload();
+      }
+    };
+    maybeEnsure();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user]);
 
   if (!isLoaded) {
     return (
@@ -23,8 +39,6 @@ export default function VerifyCounselorPage() {
       </main>
     );
   }
-
-  const counselorStatus = user?.publicMetadata?.counselor_status as string | undefined;
 
   // Scenario A: Application is pending
   if (counselorStatus === 'pending') {
