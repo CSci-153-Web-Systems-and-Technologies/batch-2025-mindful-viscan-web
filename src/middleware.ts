@@ -6,26 +6,31 @@ export default clerkMiddleware(async (auth, req) => {
   const path = req.nextUrl.pathname;
 
   const roleRaw = (sessionClaims?.metadata as any)?.role as string | undefined;
-  const counselorStatus = (sessionClaims?.metadata as any)?.counselor_status;
   const role = roleRaw ?? 'student';
-  const hasRole = Boolean(roleRaw);
   const isCounselor = role === 'counselor';
-  const isApplicant = role === 'applicant' || counselorStatus === 'pending';
   const isStudent = role === 'student';
 
   const redirect = (to: string) => NextResponse.redirect(new URL(to, req.url));
 
   const targetForRole = () => {
     if (isCounselor) return '/counselor-dashboard';
-    if (isApplicant) return '/verify-counselor';
     return '/dashboard';
   };
 
-  const isProtected = ['/dashboard', '/counselor-dashboard', '/verify-counselor'].some((p) =>
+  const isProtected = ['/dashboard', '/counselor-dashboard'].some((p) =>
     path.startsWith(p)
   );
 
-  const isPublic = ['/', '/sign-in', '/sign-up', '/sign-up-counselor'].includes(path);
+  const authRoutes = [
+    '/sign-in',
+    '/sign-up',
+    '/sign-up-counselor',
+  ];
+
+  const isPublic =
+    path === '/' ||
+    path === '/api/webhooks/clerk' ||
+    authRoutes.some(p => path.startsWith(p));
 
   // Signed-in users shouldn’t see public/auth pages
   if (userId && isPublic) {
@@ -37,24 +42,14 @@ export default clerkMiddleware(async (auth, req) => {
     return redirectToSignIn({ returnBackUrl: req.url });
   }
 
-  // Student dashboard: block counselors/applicants
+  // Student dashboard: block counselors
   if (path.startsWith('/dashboard')) {
     if (isCounselor) return redirect('/counselor-dashboard');
-    if (isApplicant) return redirect('/verify-counselor');
   }
 
-  // Counselor dashboard: allow counselors; applicants -> verify; students -> student dashboard
+  // Counselor dashboard: allow all counselors; students -> student dashboard
   if (path.startsWith('/counselor-dashboard')) {
     if (isCounselor) return NextResponse.next();
-    if (isApplicant) return redirect('/verify-counselor');
-    if (isStudent) return redirect('/dashboard');
-    return redirectToSignIn({ returnBackUrl: req.url });
-  }
-
-  // Verify page: only applicants/counselors (or no-role to let them get set)
-  if (path.startsWith('/verify-counselor')) {
-    if (isCounselor) return redirect('/counselor-dashboard');
-    if (isApplicant || !hasRole) return NextResponse.next();
     if (isStudent) return redirect('/dashboard');
     return redirectToSignIn({ returnBackUrl: req.url });
   }

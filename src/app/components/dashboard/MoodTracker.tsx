@@ -192,6 +192,7 @@ export default function MoodTracker() {
                 if (userDataByClerkId) {
                     userId = userDataByClerkId.id;
                 } else {
+
                     console.log('User not synced to database, utilizing Clerk ID fallback.');
                     userId = user.id;
                 }
@@ -203,7 +204,6 @@ export default function MoodTracker() {
             const todayStart = new Date();
             todayStart.setHours(0, 0, 0, 0);
 
-            // 1. Check/Insert into thoughts table (Legacy/Dashboard specific)
             const { count } = await supabase
                 .from('thoughts')
                 .select('*', { count: 'exact', head: true })
@@ -212,50 +212,26 @@ export default function MoodTracker() {
 
             if (count && count > 0) {
                 console.warn("You have already logged your thoughts for today.");
-                // We don't return here because we might need to sync to mood_logs if that failed previously? 
-                // But let's assume if it exists, it's fine. 
-                // Actually, if user updates thoughts? The current UI doesn't allow update, just insert.
-                // let's stick to existing logic for thoughts table to avoid breaking "already logged" check.
-                // But we should try to update mood_logs anyway just in case.
+                setIsSavingThoughts(false);
+                return;
+            }
+
+            // Insert thought
+            const { error } = await supabase
+                .from('thoughts')
+                .insert({
+                    user_id: userId,
+                    content: thoughts.trim(),
+                });
+
+            if (error) {
+                console.error('Error saving thoughts:', error);
+                console.error('Full error details:', JSON.stringify(error, null, 2));
             } else {
-                // Insert thought
-                const { error } = await supabase
-                    .from('thoughts')
-                    .insert({
-                        user_id: userId,
-                        content: thoughts.trim(),
-                    });
-
-                if (error) {
-                    console.error('Error saving thoughts:', error);
-                }
+                // Clear thoughts after successful save
+                setThoughts('');
+                alert("Thoughts saved successfully!");
             }
-
-            // 2. Sync to mood_logs (for Mood Tracking Page)
-            // Check if there is a mood log for today
-            const { data: moodLog } = await supabase
-                .from('mood_logs')
-                .select('id')
-                .eq('user_id', userId)
-                .gte('created_at', todayStart.toISOString())
-                .maybeSingle();
-
-            if (moodLog) {
-                // Update existing mood log with summary
-                const { error: updateError } = await supabase
-                    .from('mood_logs')
-                    .update({ summary: thoughts.trim() })
-                    .eq('id', moodLog.id);
-
-                if (updateError) {
-                    console.error('Error syncing thoughts to mood_logs:', updateError);
-                }
-            }
-
-            // Clear thoughts after successful save (UI feedback)
-            setThoughts('');
-            alert("Thoughts saved successfully!");
-
         } catch (error) {
             console.error('Error saving thoughts:', error);
         } finally {

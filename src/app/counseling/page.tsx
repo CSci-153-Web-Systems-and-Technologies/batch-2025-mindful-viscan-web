@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, Suspense } from 'react';
+import { useState, useEffect } from 'react';
 import NavBar from '@/app/components/NavBar';
 import { SignedIn, SignedOut, RedirectToSignIn, useUser, useSession } from '@clerk/nextjs';
 import { createAuthenticatedClient } from '@/lib/supabaseClient';
@@ -8,7 +8,7 @@ import CounselingSidebar, { Session } from '@/app/components/counseling/Counseli
 import ChatInterface, { Message } from '@/app/components/counseling/ChatInterface';
 import { useSearchParams } from 'next/navigation';
 
-function StudentCounselingContent() {
+export default function StudentCounselingPage() {
     const { user } = useUser();
     const { session } = useSession();
     const searchParams = useSearchParams();
@@ -148,7 +148,13 @@ function StudentCounselingContent() {
                     filter: `session_id=eq.${selectedSessionId}`
                 }, (payload) => {
                     const newMsg = payload.new as Message;
-                    setMessages((prev) => [...prev, newMsg]);
+                    setMessages((prev) => {
+                        // Prevent duplicates (Realtime vs Optimistic)
+                        if (prev.some(m => m.id === newMsg.id)) {
+                            return prev;
+                        }
+                        return [...prev, newMsg];
+                    });
                 })
                 .subscribe();
 
@@ -172,62 +178,50 @@ function StudentCounselingContent() {
     const handleSendMessage = async (content: string) => {
         if (!selectedSessionId || !currentUserId || !session) return;
 
+        // Optimistic Update
+        const optimisticId = `temp-${Date.now()}`;
+        const newOptimisticMsg: Message = {
+            id: optimisticId,
+            session_id: selectedSessionId,
+            sender_id: currentUserId,
+            content: content,
+            created_at: new Date().toISOString(),
+        };
+
+        setMessages((prev) => [...prev, newOptimisticMsg]);
+
         try {
             const token = await session.getToken({ template: 'supabase' });
             const supabase = createAuthenticatedClient(token || '');
 
-            const { error } = await supabase
+            const { data, error } = await supabase
                 .from('messages')
                 .insert({
                     session_id: selectedSessionId,
                     sender_id: currentUserId,
                     content: content
-                });
+                })
+                .select()
+                .single();
 
             if (error) {
                 console.error("Error sending message:", error);
                 alert("Failed to send message. Please try again.");
+                // Rollback if error
+                setMessages((prev) => prev.filter(m => m.id !== optimisticId));
+            } else if (data) {
+                // Replace optimistic message with real one to ensure correct ID
+                setMessages((prev) => prev.map(m => m.id === optimisticId ? data : m));
             }
-            // Realtime subscription will add the message to the list
         } catch (error) {
             console.error("Error sending message:", error);
+            // Rollback
+            setMessages((prev) => prev.filter(m => m.id !== optimisticId));
         }
     };
 
     const selectedSession = sessions.find(s => s.id === selectedSessionId);
 
-    return (
-        <div className="flex flex-col flex-grow p-4 md:p-8 lg:p-12 pt-24 h-full overflow-hidden">
-            <div className="w-full mx-auto flex gap-0 h-full shadow-[4px_4px_0px_0px_rgba(34,197,94,0.15)] rounded-2xl overflow-hidden border border-gray-900/50 bg-[#031207] mb-10">
-
-                {/* Left Sidebar */}
-                <div className="w-80 md:w-96 flex-shrink-0 h-full border-r border-gray-800 bg-[#031207]">
-                    <CounselingSidebar
-                        sessions={sessions}
-                        selectedSessionId={selectedSessionId}
-                        onSelectSession={handleSelectSession}
-                        showPending={true} // Enable Pending for students
-                    />
-                </div>
-
-                {/* Right Chat Area */}
-                <div className="flex-1 h-full bg-[#031207]">
-                    <ChatInterface
-                        sessionId={selectedSessionId}
-                        sessionTitle={selectedSession ? `Session with ${selectedSession.student?.full_name || 'Counselor'}` : undefined}
-                        currentUserId={currentUserId}
-                        messages={messages}
-                        onSendMessage={handleSendMessage}
-                        loading={loadingMessages}
-                        isSessionClosed={selectedSession ? ['Completed', 'Cancelled'].includes(selectedSession.status) : false}
-                    />
-                </div>
-            </div>
-        </div>
-    );
-}
-
-export default function StudentCounselingPage() {
     return (
         <main className="flex h-screen flex-col p-0 bg-[linear-gradient(110deg,var(--color-mindful-green)_0%,var(--color-mindful-dark)_100%)] overflow-hidden">
             <NavBar />
@@ -238,9 +232,33 @@ export default function StudentCounselingPage() {
             </SignedOut>
 
             <SignedIn>
-                <Suspense fallback={<div className="flex h-full items-center justify-center text-gray-400">Loading chat...</div>}>
-                    <StudentCounselingContent />
-                </Suspense>
+                <div className="flex flex-col flex-grow p-4 md:p-8 lg:p-12 pt-24 h-full overflow-hidden">
+                    <div className="w-full mx-auto flex gap-0 h-full shadow-[4px_4px_0px_0px_rgba(34,197,94,0.15)] rounded-2xl overflow-hidden border border-gray-900/50 bg-[#031207] mb-10">
+
+                        {/* Left Sidebar */}
+                        <div className="w-80 md:w-96 flex-shrink-0 h-full border-r border-gray-800 bg-[#031207]">
+                            <CounselingSidebar
+                                sessions={sessions}
+                                selectedSessionId={selectedSessionId}
+                                onSelectSession={handleSelectSession}
+                                showPending={true} // Enable Pending for students
+                            />
+                        </div>
+
+                        {/* Right Chat Area */}
+                        <div className="flex-1 h-full bg-[#031207]">
+                            <ChatInterface
+                                sessionId={selectedSessionId}
+                                sessionTitle={selectedSession ? `Session with ${selectedSession.student?.full_name || 'Counselor'}` : undefined}
+                                currentUserId={currentUserId}
+                                messages={messages}
+                                onSendMessage={handleSendMessage}
+                                loading={loadingMessages}
+                                isSessionClosed={selectedSession ? ['Completed', 'Cancelled'].includes(selectedSession.status) : false}
+                            />
+                        </div>
+                    </div>
+                </div>
             </SignedIn>
         </main>
     );

@@ -63,13 +63,21 @@ export async function ensureApplicantMetadata() {
     return { updated: false };
   }
 
-  await client.users.updateUserMetadata(userId, {
-    publicMetadata: {
-      role: 'applicant',
-      counselor_status: 'pending',
-    },
-  });
-
-  return { updated: true };
+  try {
+    await client.users.updateUserMetadata(userId, {
+      publicMetadata: {
+        role: 'applicant',
+        counselor_status: 'pending',
+      },
+      unsafeMetadata: {
+        role: 'applicant', // Mirror for visibility
+        counselor_status: 'pending',
+      }
+    });
+    return { updated: true };
+  } catch (error) {
+    console.error("Error updating metadata:", error);
+    throw error;
+  }
 }
 

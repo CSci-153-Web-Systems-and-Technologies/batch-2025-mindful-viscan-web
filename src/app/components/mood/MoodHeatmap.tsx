@@ -20,8 +20,15 @@ export default function MoodHeatmap({ logs }: MoodHeatmapProps) {
     // GitHub ends on Today.
     // We need to group by week (Sunday to Saturday)
 
+    const [selectedLog, setSelectedLog] = React.useState<MoodLog | null>(null);
+
+    // Generate dates for the last 365 days (approx 52 weeks)
+    // We want the grid to end on "Today" or end of current week
+    // GitHub ends on Today.
+    // We need to group by week (Sunday to Saturday)
+
     const today = new Date();
-    const days: { date: Date; rating?: number; count: number }[] = [];
+    const days: { date: Date; rating?: number; count: number; log?: MoodLog }[] = [];
 
     // Calculate start date (365 days ago)
     const startDate = new Date();
@@ -50,7 +57,8 @@ export default function MoodHeatmap({ logs }: MoodHeatmapProps) {
         days.push({
             date: new Date(loopDate),
             rating: log ? log.rating : 0,
-            count: log ? 1 : 0
+            count: log ? 1 : 0,
+            log: log // Store the log for the modal
         });
         loopDate.setDate(loopDate.getDate() + 1);
     }
@@ -71,19 +79,15 @@ export default function MoodHeatmap({ logs }: MoodHeatmapProps) {
         weeks.push(currentWeek);
     }
 
-    // Helper to get color
-    // 0 = No entry (Gray)
-    // 1 (Awful) -> 5 (Happy)
-    // Custom palette based on request "different colors" or "intensity"
-    // Let's use a nice custom scale
+    // Helper to get color (0 = No entry, 1-5 Scale)
     const getColor = (rating: number) => {
-        if (!rating) return 'bg-[#1a2e1a]'; // Empty/Placeholder (Darker green/gray)
+        if (!rating) return 'bg-[#1a2e1a]'; // Empty/Placeholder
         switch (rating) {
             case 1: return 'bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.6)]';     // Awful
             case 2: return 'bg-orange-500 shadow-[0_0_8px_rgba(249,115,22,0.6)]';  // Bad
             case 3: return 'bg-yellow-500 shadow-[0_0_8px_rgba(234,179,8,0.6)]';   // Okay
-            case 4: return 'bg-[#4ade80] shadow-[0_0_8px_rgba(74,222,128,0.6)]';    // Good (Green-400)
-            case 5: return 'bg-[#22c55e] shadow-[0_0_12px_rgba(34,197,94,0.8)] border border-green-300';     // Great (Green-500)
+            case 4: return 'bg-[#4ade80] shadow-[0_0_8px_rgba(74,222,128,0.6)]';    // Good
+            case 5: return 'bg-[#22c55e] shadow-[0_0_12px_rgba(34,197,94,0.8)] border border-green-300';     // Great
             default: return 'bg-[#1a2e1a]';
         }
     };
@@ -100,7 +104,6 @@ export default function MoodHeatmap({ logs }: MoodHeatmapProps) {
             <div className="min-w-fit pr-4">
                 {/* Month Labels row */}
                 <div className="flex text-xs text-gray-500 mb-2 ml-8 gap-[1px]">
-                    {/* Simplified labels logic could go here, or just let user hover */}
                 </div>
 
                 <div className="flex gap-1 h-[110px]">
@@ -118,6 +121,7 @@ export default function MoodHeatmap({ logs }: MoodHeatmapProps) {
                                 {week.map((day, dIndex) => (
                                     <div
                                         key={dIndex}
+                                        onClick={() => day.log && setSelectedLog(day.log)}
                                         className={`w-3 h-3 md:w-3.5 md:h-3.5 rounded-[2px] transition-all duration-300 hover:scale-125 hover:z-10 cursor-pointer ${getColor(day.rating || 0)}`}
                                         title={getTooltip(day)}
                                     />
@@ -139,6 +143,66 @@ export default function MoodHeatmap({ logs }: MoodHeatmapProps) {
                     <span>More</span>
                 </div>
             </div>
+
+            {/* Detail Modal */}
+            {selectedLog && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm" onClick={() => setSelectedLog(null)}>
+                    <div
+                        className="bg-[#031207] border border-gray-800 rounded-2xl p-6 w-full max-w-md shadow-2xl relative"
+                        onClick={e => e.stopPropagation()} // Prevent close on inner click
+                    >
+                        {/* Close Button */}
+                        <button
+                            onClick={() => setSelectedLog(null)}
+                            className="absolute top-4 right-4 text-gray-400 hover:text-white"
+                        >
+                            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+                        </button>
+
+                        {/* Date Header */}
+                        <div className="mb-6 text-center">
+                            <p className="text-gray-400 text-sm uppercase tracking-wider">
+                                {new Date(selectedLog.created_at).toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+                            </p>
+                        </div>
+
+                        {/* Mood Icon & Label */}
+                        <div className="flex flex-col items-center gap-2 mb-8">
+                            <div className="text-6xl animate-bounce-slow">
+                                {['', '😫', '☹️', '😐', '🙂', '🤩'][selectedLog.rating]}
+                            </div>
+                            <h3 className={`text-2xl font-bold ${selectedLog.rating === 1 ? 'text-red-500' :
+                                    selectedLog.rating === 2 ? 'text-orange-500' :
+                                        selectedLog.rating === 3 ? 'text-yellow-500' :
+                                            selectedLog.rating === 4 ? 'text-green-400' :
+                                                'text-green-500'
+                                }`}>
+                                {['', 'Awful', 'Bad', 'Okay', 'Good', 'Great'][selectedLog.rating]}
+                            </h3>
+                        </div>
+
+                        {/* Summary & Note */}
+                        <div className="space-y-4">
+                            {selectedLog.summary && (
+                                <div className="bg-[#0F1E0F] p-4 rounded-xl border border-gray-800">
+                                    <p className="text-gray-200 italic text-center">"{selectedLog.summary}"</p>
+                                </div>
+                            )}
+
+                            {selectedLog.note && (
+                                <div>
+                                    <h4 className="text-sm font-semibold text-gray-400 mb-2 uppercase">Notes</h4>
+                                    <p className="text-gray-300 leading-relaxed whitespace-pre-wrap">{selectedLog.note}</p>
+                                </div>
+                            )}
+
+                            {!selectedLog.summary && !selectedLog.note && (
+                                <p className="text-gray-500 text-center italic">No additional details recorded.</p>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

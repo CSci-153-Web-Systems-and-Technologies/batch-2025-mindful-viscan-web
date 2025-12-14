@@ -1,9 +1,33 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useUser, useSession } from '@clerk/nextjs';
+import { createAuthenticatedClient } from '@/lib/supabaseClient';
 
 export default function CalendarWidget() {
+    const { user } = useUser();
+    const { session } = useSession();
+    const [loginDates, setLoginDates] = useState<Set<string>>(new Set());
     const [currentDate, setCurrentDate] = useState(new Date());
+
+    useEffect(() => {
+        const fetchLoginDates = async () => {
+            if (!user || !session) return;
+            const token = await session.getToken({ template: 'supabase' });
+            const supabase = createAuthenticatedClient(token || '');
+
+            const { data } = await supabase
+                .from('daily_logins')
+                .select('login_date')
+                .eq('user_id', user.id);
+
+            if (data) {
+                const dates = new Set(data.map(d => d.login_date));
+                setLoginDates(dates);
+            }
+        };
+        fetchLoginDates();
+    }, [user, session]);
 
     const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
     const dayNames = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
@@ -46,6 +70,20 @@ export default function CalendarWidget() {
             date.getMonth() === today.getMonth() &&
             date.getFullYear() === today.getFullYear()
         );
+    };
+
+    const hasLogin = (day: number, date: Date, isCurrentMonth: boolean) => {
+        if (!isCurrentMonth) return false;
+        // Construct date string YYYY-MM-DD
+        const checkDate = new Date(date.getFullYear(), date.getMonth(), day);
+        // Adjust for timezone offset to match DB date string if needed, but simple ISO string slice works for local date usually if normalized
+        // However, JS dates are tricky. Standard approach:
+        const year = checkDate.getFullYear();
+        const month = String(checkDate.getMonth() + 1).padStart(2, '0');
+        const dayStr = String(day).padStart(2, '0');
+        const dateString = `${year}-${month}-${dayStr}`;
+
+        return loginDates.has(dateString);
     };
 
     const navigateMonth = (direction: 'prev' | 'next') => {
@@ -151,7 +189,7 @@ export default function CalendarWidget() {
                         <div
                             key={index}
                             className={`
-                aspect-square flex items-center justify-center text-sm
+                aspect-square flex items-center justify-center text-sm relative
                 ${isCurrentMonth ? 'text-gray-200' : 'text-gray-500'}
                 ${isTodayDate
                                     ? 'bg-mindful-green/30 border-2 border-mindful-green rounded'
@@ -160,6 +198,10 @@ export default function CalendarWidget() {
               `}
                         >
                             {day}
+                            {/* Login Indicator */}
+                            {hasLogin(day, currentDate, isCurrentMonth) && !isTodayDate && (
+                                <div className="absolute bottom-1 w-1 h-1 bg-mindful-green rounded-full"></div>
+                            )}
                         </div>
                     );
                 })}
