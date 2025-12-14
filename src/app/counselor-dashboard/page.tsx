@@ -1,13 +1,10 @@
 'use client';
 
 import CounselorSessionList from '@/app/components/counselor/CounselorSessionList';
-import CounselorNavBar from '@/app/components/counselor/CounselorNavBar';
 import { SignedIn, SignedOut, RedirectToSignIn } from '@clerk/nextjs';
-
 export default function CounselorDashboard() {
   return (
     <main className="flex min-h-screen flex-col p-0 bg-[linear-gradient(110deg,var(--color-mindful-green)_0%,var(--color-mindful-dark)_100%)]">
-      <CounselorNavBar />
 
       {/* Enforce Auth */}
       <SignedOut>

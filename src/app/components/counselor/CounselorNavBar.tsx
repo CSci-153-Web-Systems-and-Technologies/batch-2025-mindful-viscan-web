@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import Link from 'next/link';
 import Image from 'next/image';
 import { SignedIn, SignedOut, UserButton } from '@clerk/nextjs';
 
@@ -22,15 +23,15 @@ const CounselorNavBar: React.FC = () => {
             <div className="flex items-center gap-8">
                 <SignedIn>
                     <div className="flex items-center gap-6 mr-4">
-                        <a href="/counselor-dashboard" className="text-gray-300 hover:text-mindful-green transition-colors font-medium text-sm uppercase tracking-wider">
+                        <Link href="/counselor-dashboard" className="text-gray-300 hover:text-mindful-green transition-colors font-medium text-sm uppercase tracking-wider">
                             Dashboard
-                        </a>
-                        <a href="/counselor-dashboard/counseling" className="text-gray-300 hover:text-mindful-green transition-colors font-medium text-sm uppercase tracking-wider">
+                        </Link>
+                        <Link href="/counselor-dashboard/counseling" className="text-gray-300 hover:text-mindful-green transition-colors font-medium text-sm uppercase tracking-wider">
                             Counseling
-                        </a>
-                        <a href="/counselor-dashboard/resources" className="text-gray-300 hover:text-mindful-green transition-colors font-medium text-sm uppercase tracking-wider">
+                        </Link>
+                        <Link href="/counselor-dashboard/resources" className="text-gray-300 hover:text-mindful-green transition-colors font-medium text-sm uppercase tracking-wider">
                             Resources
-                        </a>
+                        </Link>
                     </div>
                     {/* User Profile Avatar */}
                     <UserButton
