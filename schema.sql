@@ -53,6 +53,9 @@ create table public.resources (
   created_at timestamp with time zone default now()
 );
 
+-- Enable RLS for Resources (Policies added below)
+ALTER TABLE "public"."resources" ENABLE ROW LEVEL SECURITY;
+
 -- ==========================================
 -- ROW LEVEL SECURITY (RLS) POLICIES
 -- ==========================================

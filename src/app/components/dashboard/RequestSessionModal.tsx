@@ -23,8 +23,6 @@ export default function RequestSessionModal({ isOpen, onClose, onSuccess }: Requ
 
     const [title, setTitle] = useState('');
     const [type, setType] = useState('');
-    const [date, setDate] = useState('');
-    const [time, setTime] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [error, setError] = useState('');
 
@@ -35,7 +33,7 @@ export default function RequestSessionModal({ isOpen, onClose, onSuccess }: Requ
         if (!user?.id || !session) return;
 
         // Basic validation
-        if (!title.trim() || !type || !date || !time) {
+        if (!title.trim() || !type) {
             setError('Please fill in all fields');
             return;
         }
@@ -47,8 +45,7 @@ export default function RequestSessionModal({ isOpen, onClose, onSuccess }: Requ
             const token = await session.getToken({ template: 'supabase' });
             const supabase = createAuthenticatedClient(token || '');
 
-            // Combine date and time
-            const scheduledAt = new Date(`${date}T${time}`);
+
 
             // Get user's Supabase ID
             let studentId = user.id;
@@ -76,7 +73,7 @@ export default function RequestSessionModal({ isOpen, onClose, onSuccess }: Requ
                     student_id: studentId,
                     title: title.trim(),
                     type: type,
-                    scheduled_at: scheduledAt.toISOString(),
+                    scheduled_at: null, // No specific time requested
                     status: 'Pending', // Default status
                 });
 
@@ -87,8 +84,6 @@ export default function RequestSessionModal({ isOpen, onClose, onSuccess }: Requ
             // Reset and close
             setTitle('');
             setType('');
-            setDate('');
-            setTime('');
             onSuccess();
             onClose();
         } catch (err: any) {
@@ -98,8 +93,6 @@ export default function RequestSessionModal({ isOpen, onClose, onSuccess }: Requ
             setIsSubmitting(false);
         }
     };
-
-    const today = new Date().toISOString().split('T')[0];
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm">
@@ -150,29 +143,6 @@ export default function RequestSessionModal({ isOpen, onClose, onSuccess }: Requ
                                     {t.label}
                                 </button>
                             ))}
-                        </div>
-                    </div>
-
-                    {/* Date & Time */}
-                    <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-1">
-                            <label className="text-sm text-gray-400 font-medium ml-1">Date</label>
-                            <input
-                                type="date"
-                                min={today}
-                                value={date}
-                                onChange={(e) => setDate(e.target.value)}
-                                className="w-full px-4 py-3 bg-[#0F1E0F] border border-gray-700 rounded-xl text-gray-200 focus:outline-none focus:border-mindful-green transition-all [color-scheme:dark]"
-                            />
-                        </div>
-                        <div className="space-y-1">
-                            <label className="text-sm text-gray-400 font-medium ml-1">Time</label>
-                            <input
-                                type="time"
-                                value={time}
-                                onChange={(e) => setTime(e.target.value)}
-                                className="w-full px-4 py-3 bg-[#0F1E0F] border border-gray-700 rounded-xl text-gray-200 focus:outline-none focus:border-mindful-green transition-all [color-scheme:dark]"
-                            />
                         </div>
                     </div>
 
