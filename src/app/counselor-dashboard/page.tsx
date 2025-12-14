@@ -1,21 +1,49 @@
-'use client';
-
-import NavBar from '@/app/components/NavBar';
+import CounselorSessionList from '@/app/components/counselor/CounselorSessionList';
+import { SignedIn, SignedOut, RedirectToSignIn } from '@clerk/nextjs';
+import Link from 'next/link';
 
 export default function CounselorDashboard() {
   return (
-    <main className="flex min-h-screen flex-col p-0 bg-[linear-gradient(110deg,var(--color-mindful-green)_0%,var(--color-mindful-dark)_100%)]">
-      <NavBar />
-      <div className="flex flex-grow items-center justify-center p-6 pt-24">
-        <div className="w-full max-w-3xl">
-          <div className="rounded-2xl bg-[#031207] p-10 md:p-16 border border-gray-900/50 shadow-[4px_4px_0px_0px_rgba(34,197,94,0.15)]">
-            <h1 className="text-[#42734D] font-kodchasan text-4xl font-medium text-center mb-8">
-              Counselor Dashboard
-            </h1>
+    <div className="absolute inset-0 bg-[#031207] text-white font-sans overflow-y-auto custom-scrollbar selection:bg-mindful-green/30 selection:text-mindful-green">
+
+      {/* Enforce Auth */}
+      <SignedOut>
+        <RedirectToSignIn />
+      </SignedOut>
+
+      <SignedIn>
+        <div className="max-w-7xl mx-auto px-6 py-8 pb-32">
+          {/* Header / Nav */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6 mb-12 animate-in fade-in slide-in-from-top-4 duration-700">
+            <div>
+              <h1 className="text-4xl font-kodchasan font-bold text-transparent bg-clip-text bg-gradient-to-r from-white to-gray-400">
+                Counselor Dashboard
+              </h1>
+              <p className="text-gray-400 mt-2 font-medium">Manage student sessions and resources</p>
+            </div>
+
+            {/* Navigation Tabs */}
+            <div className="flex bg-[#0F1E0F] p-1.5 rounded-xl border border-gray-800 self-start sm:self-auto">
+              <Link
+                href="/counselor-dashboard"
+                className="px-6 py-2.5 rounded-lg text-sm font-medium bg-mindful-green text-white shadow-lg shadow-mindful-green/20"
+              >
+                Sessions
+              </Link>
+              <Link
+                href="/counselor-dashboard/resources"
+                className="px-6 py-2.5 rounded-lg text-sm font-medium text-gray-400 hover:text-gray-200 transition-colors"
+              >
+                Resources
+              </Link>
+            </div>
+          </div>
+
+          <div className="animate-in fade-in slide-in-from-bottom-8 duration-700 delay-100">
+            <CounselorSessionList />
           </div>
         </div>
-      </div>
-    </main>
+      </SignedIn>
+    </div>
   );
 }
-
