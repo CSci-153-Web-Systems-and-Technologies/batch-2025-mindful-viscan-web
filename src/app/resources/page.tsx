@@ -78,9 +78,9 @@ export default function ResourcesPage() {
             </SignedOut>
 
             <SignedIn>
-                <div className="flex flex-col flex-grow p-4 md:p-8 lg:p-12 pt-24 h-full overflow-hidden">
-                    <div className="w-full mx-auto h-full flex flex-col">
-                        <div className="rounded-2xl bg-[#031207] border border-gray-900/50 shadow-[4px_4px_0px_0px_rgba(34,197,94,0.15)] flex flex-col h-full overflow-hidden">
+                <div className="flex flex-col flex-1 min-h-0 p-6 md:p-10 pt-24 pb-10 overflow-hidden">
+                    <div className="w-full mx-auto flex flex-col flex-1 min-h-0">
+                        <div className="rounded-2xl bg-[#031207] border border-gray-900/50 shadow-[4px_4px_0px_0px_rgba(34,197,94,0.15)] flex flex-col flex-1 min-h-0 overflow-hidden relative">
 
                             {/* Header Section (Non-scrolling) */}
                             <div className="p-6 md:p-10 lg:p-12 pb-0 flex-shrink-0">

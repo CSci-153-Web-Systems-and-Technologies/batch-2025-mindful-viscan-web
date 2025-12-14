@@ -81,9 +81,9 @@ export default function ResourceManager() {
     }, [isLoaded, session]);
 
     return (
-        <div className="flex flex-col gap-6">
-            {/* Header / Actions */}
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div className="flex flex-col h-full gap-6">
+            {/* Header / Actions (Fixed) */}
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 shrink-0">
                 <div>
                     <h2 className="text-2xl font-kodchasan font-bold text-transparent bg-clip-text bg-gradient-to-r from-white to-gray-400">
                         Resource Library
@@ -107,13 +107,15 @@ export default function ResourceManager() {
                 </button>
             </div>
 
-            {/* Grid */}
-            <ResourceGrid
-                resources={resources}
-                isLoading={loading}
-                onDelete={handleDeleteResource}
-                onEdit={handleEditResource}
-            />
+            {/* Scrollable Content Area */}
+            <div className="flex-1 overflow-y-auto min-h-0 pr-2">
+                <ResourceGrid
+                    resources={resources}
+                    isLoading={loading}
+                    onDelete={handleDeleteResource}
+                    onEdit={handleEditResource}
+                />
+            </div>
 
             {/* Modal */}
             <AddResourceModal

@@ -5,7 +5,9 @@ import React from 'react';
 export interface Resource {
     id: string;
     title: string;
+    description?: string;
     type: 'Article' | 'Video';
+    content_type?: string;
     content: string;
     created_at: string;
 }
