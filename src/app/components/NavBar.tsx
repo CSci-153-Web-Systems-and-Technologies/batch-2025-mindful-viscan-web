@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import Link from 'next/link';
 import Image from 'next/image';
 import { SignedIn, SignedOut, UserButton } from '@clerk/nextjs';
 import Button from './Button';
@@ -24,18 +25,18 @@ const NavBar: React.FC = () => {
         <SignedIn>
           {/* === STATE A: LOGGED IN (Student View) === */}
           <div className="flex items-center gap-6 mr-4">
-            <a href="/dashboard" className="text-gray-300 hover:text-mindful-green transition-colors font-medium text-sm uppercase tracking-wider">
+            <Link href="/dashboard" className="text-gray-300 hover:text-mindful-green transition-colors font-medium text-sm uppercase tracking-wider">
               Dashboard
-            </a>
-            <a href="/counseling" className="text-gray-300 hover:text-mindful-green transition-colors font-medium text-sm uppercase tracking-wider">
+            </Link>
+            <Link href="/counseling" className="text-gray-300 hover:text-mindful-green transition-colors font-medium text-sm uppercase tracking-wider">
               Counseling
-            </a>
-            <a href="/mood-tracking" className="text-gray-300 hover:text-mindful-green transition-colors font-medium text-sm uppercase tracking-wider">
+            </Link>
+            <Link href="/mood-tracking" className="text-gray-300 hover:text-mindful-green transition-colors font-medium text-sm uppercase tracking-wider">
               Mood Tracking
-            </a>
-            <a href="/resources" className="text-gray-300 hover:text-mindful-green transition-colors font-medium text-sm uppercase tracking-wider">
+            </Link>
+            <Link href="/resources" className="text-gray-300 hover:text-mindful-green transition-colors font-medium text-sm uppercase tracking-wider">
               Resources
-            </a>
+            </Link>
           </div>
 
           {/* User Profile Avatar / Dropdown */}

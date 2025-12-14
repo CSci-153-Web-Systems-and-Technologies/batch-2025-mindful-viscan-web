@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import NavBar from '@/app/components/NavBar';
 import { SignedIn, SignedOut, RedirectToSignIn, useUser, useSession } from '@clerk/nextjs';
 import { createAuthenticatedClient } from '@/lib/supabaseClient';
 import CounselingSidebar, { Session } from '@/app/components/counseling/CounselingSidebar';
@@ -224,7 +223,6 @@ export default function StudentCounselingPage() {
 
     return (
         <main className="flex h-screen flex-col p-0 bg-[linear-gradient(110deg,var(--color-mindful-green)_0%,var(--color-mindful-dark)_100%)] overflow-hidden">
-            <NavBar />
 
             {/* Enforce Auth */}
             <SignedOut>
