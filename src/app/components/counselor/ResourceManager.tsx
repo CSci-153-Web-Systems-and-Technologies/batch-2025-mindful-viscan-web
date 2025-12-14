@@ -13,6 +13,7 @@ export default function ResourceManager() {
     const [resources, setResources] = useState<Resource[]>([]);
     const [loading, setLoading] = useState(true);
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+    const [resourceToEdit, setResourceToEdit] = useState<Resource | null>(null);
 
     const fetchResources = async () => {
         if (!session) return;
@@ -63,6 +64,16 @@ export default function ResourceManager() {
         }
     };
 
+    const handleEditResource = (resource: Resource) => {
+        setResourceToEdit(resource);
+        setIsAddModalOpen(true);
+    };
+
+    const handleCloseModal = () => {
+        setIsAddModalOpen(false);
+        setResourceToEdit(null);
+    };
+
     useEffect(() => {
         if (isLoaded && session) {
             fetchResources();
@@ -83,7 +94,10 @@ export default function ResourceManager() {
                 </div>
 
                 <button
-                    onClick={() => setIsAddModalOpen(true)}
+                    onClick={() => {
+                        setResourceToEdit(null);
+                        setIsAddModalOpen(true);
+                    }}
                     className="px-5 py-2.5 bg-mindful-green text-white rounded-xl hover:bg-[#5a9f5f] transition-all font-medium shadow-lg shadow-mindful-green/20 flex items-center gap-2 self-start md:self-auto"
                 >
                     <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -97,14 +111,16 @@ export default function ResourceManager() {
             <ResourceGrid
                 resources={resources}
                 isLoading={loading}
-                onDelete={handleDeleteResource} // Pass delete handler for counselors
+                onDelete={handleDeleteResource}
+                onEdit={handleEditResource}
             />
 
             {/* Modal */}
             <AddResourceModal
                 isOpen={isAddModalOpen}
-                onClose={() => setIsAddModalOpen(false)}
+                onClose={handleCloseModal}
                 onSuccess={fetchResources}
+                resourceToEdit={resourceToEdit}
             />
         </div>
     );
