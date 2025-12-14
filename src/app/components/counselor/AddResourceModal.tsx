@@ -15,7 +15,9 @@ export default function AddResourceModal({ isOpen, onClose, onSuccess }: AddReso
     const { session } = useSession();
 
     const [title, setTitle] = useState('');
+    const [description, setDescription] = useState('');
     const [type, setType] = useState('Article');
+    const [contentType, setContentType] = useState('Academic'); // Default
     const [content, setContent] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [error, setError] = useState('');
@@ -26,8 +28,8 @@ export default function AddResourceModal({ isOpen, onClose, onSuccess }: AddReso
         e.preventDefault();
         if (!user?.id || !session) return;
 
-        if (!title.trim() || !content.trim()) {
-            setError('Please fill in directly required fields');
+        if (!title.trim() || !content.trim() || !description.trim()) {
+            setError('Please fill in all required fields');
             return;
         }
 
@@ -42,7 +44,9 @@ export default function AddResourceModal({ isOpen, onClose, onSuccess }: AddReso
                 .from('resources')
                 .insert({
                     title: title.trim(),
+                    description: description.trim(),
                     type: type,
+                    content_type: contentType,
                     content: content.trim(),
                 });
 
@@ -53,8 +57,10 @@ export default function AddResourceModal({ isOpen, onClose, onSuccess }: AddReso
 
             // Reset
             setTitle('');
+            setDescription('');
             setContent('');
             setType('Article');
+            setContentType('Academic');
             onSuccess();
             onClose();
         } catch (err: any) {
@@ -99,8 +105,8 @@ export default function AddResourceModal({ isOpen, onClose, onSuccess }: AddReso
                                     type="button"
                                     onClick={() => setType(t)}
                                     className={`flex-1 py-2 rounded-lg text-sm font-medium transition-colors ${type === t
-                                            ? 'bg-mindful-green text-white shadow-lg'
-                                            : 'text-gray-400 hover:text-gray-200'
+                                        ? 'bg-mindful-green text-white shadow-lg'
+                                        : 'text-gray-400 hover:text-gray-200'
                                         }`}
                                 >
                                     {t}

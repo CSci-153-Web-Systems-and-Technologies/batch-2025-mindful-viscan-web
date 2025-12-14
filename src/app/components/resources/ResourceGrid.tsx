@@ -64,9 +64,21 @@ export default function ResourceGrid({ resources, onDelete, isLoading }: Resourc
                         </button>
                     )}
 
-                    {/* Image Placeholder */}
-                    <div className="w-full h-40 bg-[#48744C] rounded-2xl mb-5 shrink-0 opacity-90 group-hover:opacity-100 transition-opacity">
-                        {/* Future: <img src={...} /> */}
+                    {/* Image Placeholder with Icon */}
+                    <div className="w-full h-40 bg-[#48744C] rounded-2xl mb-5 shrink-0 flex items-center justify-center opacity-90 group-hover:opacity-100 transition-opacity overflow-hidden relative">
+                        {/* Subtle pattern or gradient overlay could go here */}
+                        <div className="absolute inset-0 bg-gradient-to-tr from-black/20 to-transparent" />
+
+                        {resource.type === 'Video' ? (
+                            <svg className="w-16 h-16 text-white/50 group-hover:text-white/80 transition-colors transform group-hover:scale-110 duration-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                        ) : (
+                            <svg className="w-16 h-16 text-white/50 group-hover:text-white/80 transition-colors transform group-hover:scale-110 duration-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z" />
+                            </svg>
+                        )}
                     </div>
 
                     {/* Content */}
@@ -75,16 +87,22 @@ export default function ResourceGrid({ resources, onDelete, isLoading }: Resourc
                             {resource.title}
                         </h4>
                         <p className="text-gray-400 text-sm line-clamp-2 mb-4 leading-relaxed">
-                            {resource.content.startsWith('http')
-                                ? 'External Resource'
-                                : resource.content}
+                            {resource.description || (resource.content.startsWith('http') ? 'Click to view resource' : resource.content)}
                         </p>
 
-                        {/* Footer: Type Indicator */}
-                        <div className="mt-auto">
-                            <span className="text-gray-300 border border-gray-600 rounded-lg px-3 py-1 text-xs font-medium">
+                        {/* Footer: Type Indicators */}
+                        <div className="mt-auto flex gap-2">
+                            {/* Format Type */}
+                            <span className="text-gray-300 border border-gray-600 rounded-lg px-2 py-1 text-xs font-medium">
                                 {resource.type}
                             </span>
+
+                            {/* Content Category */}
+                            {resource.content_type && (
+                                <span className="text-mindful-green border border-mindful-green/40 bg-mindful-green/10 rounded-lg px-2 py-1 text-xs font-medium">
+                                    {resource.content_type}
+                                </span>
+                            )}
                         </div>
                     </div>
 
