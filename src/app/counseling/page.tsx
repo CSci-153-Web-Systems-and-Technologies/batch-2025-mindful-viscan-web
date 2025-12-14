@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import NavBar from '@/app/components/NavBar';
 import { SignedIn, SignedOut, RedirectToSignIn, useUser, useSession } from '@clerk/nextjs';
 import { createAuthenticatedClient } from '@/lib/supabaseClient';
@@ -8,7 +8,7 @@ import CounselingSidebar, { Session } from '@/app/components/counseling/Counseli
 import ChatInterface, { Message } from '@/app/components/counseling/ChatInterface';
 import { useSearchParams } from 'next/navigation';
 
-export default function StudentCounselingPage() {
+function StudentCounselingContent() {
     const { user } = useUser();
     const { session } = useSession();
     const searchParams = useSearchParams();
@@ -197,6 +197,38 @@ export default function StudentCounselingPage() {
     const selectedSession = sessions.find(s => s.id === selectedSessionId);
 
     return (
+        <div className="flex flex-col flex-grow p-4 md:p-8 lg:p-12 pt-24 h-full overflow-hidden">
+            <div className="w-full mx-auto flex gap-0 h-full shadow-[4px_4px_0px_0px_rgba(34,197,94,0.15)] rounded-2xl overflow-hidden border border-gray-900/50 bg-[#031207] mb-10">
+
+                {/* Left Sidebar */}
+                <div className="w-80 md:w-96 flex-shrink-0 h-full border-r border-gray-800 bg-[#031207]">
+                    <CounselingSidebar
+                        sessions={sessions}
+                        selectedSessionId={selectedSessionId}
+                        onSelectSession={handleSelectSession}
+                        showPending={true} // Enable Pending for students
+                    />
+                </div>
+
+                {/* Right Chat Area */}
+                <div className="flex-1 h-full bg-[#031207]">
+                    <ChatInterface
+                        sessionId={selectedSessionId}
+                        sessionTitle={selectedSession ? `Session with ${selectedSession.student?.full_name || 'Counselor'}` : undefined}
+                        currentUserId={currentUserId}
+                        messages={messages}
+                        onSendMessage={handleSendMessage}
+                        loading={loadingMessages}
+                        isSessionClosed={selectedSession ? ['Completed', 'Cancelled'].includes(selectedSession.status) : false}
+                    />
+                </div>
+            </div>
+        </div>
+    );
+}
+
+export default function StudentCounselingPage() {
+    return (
         <main className="flex h-screen flex-col p-0 bg-[linear-gradient(110deg,var(--color-mindful-green)_0%,var(--color-mindful-dark)_100%)] overflow-hidden">
             <NavBar />
 
@@ -206,33 +238,9 @@ export default function StudentCounselingPage() {
             </SignedOut>
 
             <SignedIn>
-                <div className="flex flex-col flex-grow p-4 md:p-8 lg:p-12 pt-24 h-full overflow-hidden">
-                    <div className="w-full mx-auto flex gap-0 h-full shadow-[4px_4px_0px_0px_rgba(34,197,94,0.15)] rounded-2xl overflow-hidden border border-gray-900/50 bg-[#031207] mb-10">
-
-                        {/* Left Sidebar */}
-                        <div className="w-80 md:w-96 flex-shrink-0 h-full border-r border-gray-800 bg-[#031207]">
-                            <CounselingSidebar
-                                sessions={sessions}
-                                selectedSessionId={selectedSessionId}
-                                onSelectSession={handleSelectSession}
-                                showPending={true} // Enable Pending for students
-                            />
-                        </div>
-
-                        {/* Right Chat Area */}
-                        <div className="flex-1 h-full bg-[#031207]">
-                            <ChatInterface
-                                sessionId={selectedSessionId}
-                                sessionTitle={selectedSession ? `Session with ${selectedSession.student?.full_name || 'Counselor'}` : undefined}
-                                currentUserId={currentUserId}
-                                messages={messages}
-                                onSendMessage={handleSendMessage}
-                                loading={loadingMessages}
-                                isSessionClosed={selectedSession ? ['Completed', 'Cancelled'].includes(selectedSession.status) : false}
-                            />
-                        </div>
-                    </div>
-                </div>
+                <Suspense fallback={<div className="flex h-full items-center justify-center text-gray-400">Loading chat...</div>}>
+                    <StudentCounselingContent />
+                </Suspense>
             </SignedIn>
         </main>
     );
