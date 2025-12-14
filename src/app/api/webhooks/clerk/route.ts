@@ -65,19 +65,14 @@ export async function POST(req: Request) {
     const eventType = evt.type
 
     if (eventType === 'user.created') {
-        const { id, first_name, last_name } = evt.data
-
-        // We construct the full name
+        const { id, first_name, last_name, public_metadata } = evt.data
         const fullName = `${first_name || ''} ${last_name || ''}`.trim()
+        const role = (public_metadata?.role as string) || 'student' // Default to student
 
-        // 💡 UPDATED TO UPSERT: 
-        // Handles cases where user already exists (retry or manual sync).
-        // If they exist, do nothing (onConflict ignore) or update.
-        // Simple upsert updates if exists, effectively idempotent.
         const { error } = await supabase.from('users').upsert({
-            id: id, // Sync the Clerk ID to Supabase
+            id: id,
             full_name: fullName,
-            role: 'user', // Default role since your column exists but is nullable
+            role: role,
         })
 
         if (error) {
@@ -85,25 +80,28 @@ export async function POST(req: Request) {
             return new Response('Error inserting user', { status: 500 })
         }
 
-        console.log(`User ${id} added to Supabase!`)
+        console.log(`User ${id} added with role ${role}!`)
     }
 
     // Handle updates
     if (eventType === 'user.updated') {
-        const { id, first_name, last_name } = evt.data
+        const { id, first_name, last_name, public_metadata } = evt.data
         const fullName = `${first_name || ''} ${last_name || ''}`.trim()
+        const role = public_metadata?.role as string
 
-        // 💡 CHANGED TO UPSERT: 
-        // This handles existing users who might be missing from Supabase.
-        // If they exist, it updates them. If not, it inserts them.
+        const upsertData: any = {
+            id: id,
+            full_name: fullName,
+        }
+
+        // Only update role if it exists in metadata, otherwise leave it alone
+        if (role) {
+            upsertData.role = role
+        }
+
         const { error } = await supabase
             .from('users')
-            .upsert({
-                id: id,
-                full_name: fullName,
-                // We don't include 'role' here so we don't accidentally reset an admin to 'user'.
-                // If it's a new record, the DB default ('user') will kick in.
-            })
+            .upsert(upsertData)
 
         if (error) {
             console.error('Error updating user:', error)
