@@ -1,14 +1,23 @@
 'use client';
 
 import { useState } from 'react';
-import { createAuthenticatedClient } from '@/app/utils/supabase/client';
+import { createAuthenticatedClient } from '@/lib/supabaseClient';
 import { useSession, useUser } from '@clerk/nextjs';
+
+interface MoodLog {
+    id: string;
+    created_at: string;
+    rating: number;
+    note?: string;
+    summary?: string;
+}
 
 interface MoodEntryProps {
     onEntryAdded: () => void;
+    currentLog?: MoodLog | null;
 }
 
-export default function MoodEntry({ onEntryAdded }: MoodEntryProps) {
+export default function MoodEntry({ onEntryAdded, currentLog }: MoodEntryProps) {
     const { session } = useSession();
     const { user } = useUser();
 
@@ -19,7 +28,6 @@ export default function MoodEntry({ onEntryAdded }: MoodEntryProps) {
 
     // UI State
     const [isSubmitting, setIsSubmitting] = useState(false);
-    const [formatting, setFormatting] = useState({ bold: false, italic: false, underline: false });
 
     // Mood Icons & Colors
     const moods = [
@@ -51,7 +59,6 @@ export default function MoodEntry({ onEntryAdded }: MoodEntryProps) {
                 console.error("Error submitting mood:", error);
                 alert("Failed to save mood entry.");
             } else {
-                // Reset form
                 setSummary('');
                 setRating(null);
                 setNote('');
@@ -64,9 +71,6 @@ export default function MoodEntry({ onEntryAdded }: MoodEntryProps) {
         }
     };
 
-    // Toggle formatting for textarea (Visual only for now, or simple markdown injection)
-    // For simplicity, we'll just insert markdown chars or leave as is if pure text.
-    // The design shows B / I / U buttons. Let's make them insert markdown.
     const insertFormatting = (type: 'bold' | 'italic' | 'underline') => {
         const textarea = document.getElementById('mood-note') as HTMLTextAreaElement;
         if (!textarea) return;
@@ -80,15 +84,36 @@ export default function MoodEntry({ onEntryAdded }: MoodEntryProps) {
             newText = note.substring(0, start) + `**${selectedText}**` + note.substring(end);
         } else if (type === 'italic') {
             newText = note.substring(0, start) + `*${selectedText}*` + note.substring(end);
-        } else if (type === 'underline') {
-            // Markdown doesn't standardly support underline, usually ignored or HTML used.
-            // We'll skip or use HTML <u> tag if safe, or just ignore for MVP.
-            // Let's use simple CSS class logic if we were rendering rich text, 
-            // but for simpler input, let's just use it as a placeholder.
         }
 
         setNote(newText);
     };
+
+    // If a log for today exists, show Read-Only View
+    if (currentLog) {
+        const mood = moods.find(m => m.value === currentLog.rating);
+        return (
+            <div className="w-full bg-[#031207] border border-gray-900/50 rounded-2xl p-6 flex flex-col gap-6 shadow-[4px_4px_0px_0px_rgba(34,197,94,0.15)] relative overflow-hidden">
+                {/* Background decoration */}
+                <div className={`absolute top-0 right-0 p-32 rounded-full blur-[100px] opacity-10 ${mood?.color.split(' ')[0].replace('text-', 'bg-') || 'bg-gray-500'}`} />
+
+                <div className="flex flex-col items-center justify-center py-12 gap-4 text-center z-10">
+                    <div className="flex flex-col items-center gap-2">
+                        <span className="text-gray-400 text-sm uppercase tracking-widest">Daily Check-in Complete</span>
+                        <h3 className="text-2xl font-kodchasan text-white font-bold">You're feeling {mood?.label || '...'}</h3>
+                    </div>
+
+                    <div className="text-6xl animate-bounce-slow">
+                        {mood?.icon}
+                    </div>
+
+                    <div className="bg-[#0F1E0F] px-6 py-3 rounded-xl border border-gray-800 max-w-lg mt-4">
+                        <p className="text-gray-200 italic">"{currentLog.summary}"</p>
+                    </div>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className="w-full bg-[#031207] border border-gray-900/50 rounded-2xl p-6 flex flex-col gap-6 shadow-[4px_4px_0px_0px_rgba(34,197,94,0.15)]">
@@ -101,11 +126,6 @@ export default function MoodEntry({ onEntryAdded }: MoodEntryProps) {
                     onChange={(e) => setSummary(e.target.value)}
                     className="w-full bg-[#0F1E0F] border border-gray-800 rounded-xl px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:border-mindful-green transition-colors pr-12"
                 />
-                <div className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 flex gap-2">
-                    {/* Icons from design (optional) */}
-                    <span>📎</span>
-                    <span>➤</span>
-                </div>
             </div>
 
             {/* Mood Selector (Icons) */}
@@ -131,7 +151,6 @@ export default function MoodEntry({ onEntryAdded }: MoodEntryProps) {
 
             {/* Large Text Area */}
             <div className="flex-1">
-                <p className="text-sm text-gray-400 mb-2">Need more room?</p>
                 <textarea
                     id="mood-note"
                     value={note}

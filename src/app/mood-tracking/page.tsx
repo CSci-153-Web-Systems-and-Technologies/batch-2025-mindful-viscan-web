@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import NavBar from '@/app/components/NavBar';
 import { SignedIn, SignedOut, RedirectToSignIn, useUser, useSession } from '@clerk/nextjs';
-import { createAuthenticatedClient } from '@/app/utils/supabase/client';
+import { createAuthenticatedClient } from '@/lib/supabaseClient';
 import MoodHeatmap from '@/app/components/mood/MoodHeatmap';
 import MoodEntry from '@/app/components/mood/MoodEntry';
 import MoodStats from '@/app/components/mood/MoodStats';
@@ -25,8 +25,6 @@ export default function MoodTrackingPage() {
     const fetchLogs = useCallback(async () => {
         if (!user || !session) return;
         try {
-            // Keep loading true only on initial load if needed, or silent refresh?
-            // Let's not set loading=true here to avoid flickering on refresh
             const token = await session.getToken({ template: 'supabase' });
             const supabase = createAuthenticatedClient(token || '');
 
@@ -54,6 +52,13 @@ export default function MoodTrackingPage() {
             fetchLogs();
         }
     }, [isLoaded, user, fetchLogs]);
+
+    // Check for today's log to disable duplicate entries
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    // Find log created after today 00:00
+    const todayLog = logs.find(log => new Date(log.created_at) >= today);
 
     return (
         <main className="flex min-h-screen flex-col p-0 bg-[linear-gradient(110deg,var(--color-mindful-green)_0%,var(--color-mindful-dark)_100%)]">
@@ -90,7 +95,7 @@ export default function MoodTrackingPage() {
                         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                             {/* 2. Mood Entry Form */}
                             <div className="lg:col-span-2">
-                                <MoodEntry onEntryAdded={fetchLogs} />
+                                <MoodEntry onEntryAdded={fetchLogs} currentLog={todayLog || null} />
                             </div>
 
                             {/* 3. Mood Stats */}

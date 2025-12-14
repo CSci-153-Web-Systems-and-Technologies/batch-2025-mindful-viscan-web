@@ -118,7 +118,9 @@ export default function SessionHistory() {
                     .in('id', counselorIds);
 
                 if (counselorsError) {
-                    console.error('Error fetching counselors:', counselorsError);
+                    if (counselorsError) {
+                        console.warn('Warning fetching counselors (names may be missing):', counselorsError);
+                    }
                 }
 
                 // Map counselor data to sessions (even if there was an error, continue with available data)
