@@ -2,7 +2,6 @@
 
 import { useUser, useSession } from '@clerk/nextjs';
 import { useEffect, useState } from 'react';
-import NavBar from '@/app/components/NavBar';
 import CalendarWidget from '@/app/components/dashboard/CalendarWidget';
 import MoodTracker from '@/app/components/dashboard/MoodTracker';
 import SessionHistory from '@/app/components/dashboard/SessionHistory';
@@ -67,7 +66,6 @@ export default function StudentDashboard() {
   if (!isLoaded) {
     return (
       <main className="flex min-h-screen flex-col p-0 bg-[linear-gradient(110deg,var(--color-mindful-green)_0%,var(--color-mindful-dark)_100%)]">
-        <NavBar />
         <div className="flex flex-grow items-center justify-center p-6 pt-24">
           <div className="text-gray-200">Loading...</div>
         </div>
@@ -82,7 +80,6 @@ export default function StudentDashboard() {
 
   return (
     <main className="flex min-h-screen flex-col p-0 bg-[linear-gradient(110deg,var(--color-mindful-green)_0%,var(--color-mindful-dark)_100%)]">
-      <NavBar />
       <div className="flex flex-grow p-4 md:p-8 pt-24">
         {/* Main card with padding to show gradient background around it */}
         <div className="w-full mx-auto">

@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import NavBar from '@/app/components/NavBar';
 import { SignedIn, SignedOut, RedirectToSignIn, useUser, useSession } from '@clerk/nextjs';
 import { createAuthenticatedClient } from '@/lib/supabaseClient';
 import MoodHeatmap from '@/app/components/mood/MoodHeatmap';
@@ -62,7 +61,6 @@ export default function MoodTrackingPage() {
 
     return (
         <main className="flex min-h-screen flex-col p-0 bg-[linear-gradient(110deg,var(--color-mindful-green)_0%,var(--color-mindful-dark)_100%)]">
-            <NavBar />
 
             <SignedOut>
                 <RedirectToSignIn />

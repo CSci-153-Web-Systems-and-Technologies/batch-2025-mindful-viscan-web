@@ -3,7 +3,6 @@
 import { useEffect, useState } from 'react';
 import { useSession, useUser, RedirectToSignIn, SignedOut, SignedIn } from '@clerk/nextjs';
 import { createAuthenticatedClient } from '@/lib/supabaseClient';
-import NavBar from '@/app/components/NavBar';
 import ResourceGrid, { Resource } from '@/app/components/resources/ResourceGrid';
 
 export default function ResourcesPage() {
@@ -61,7 +60,6 @@ export default function ResourcesPage() {
     if (!isLoaded) {
         return (
             <main className="flex min-h-screen flex-col p-0 bg-[linear-gradient(110deg,var(--color-mindful-green)_0%,var(--color-mindful-dark)_100%)]">
-                <NavBar />
                 <div className="flex flex-grow items-center justify-center p-6 pt-24">
                     <div className="text-gray-200">Loading...</div>
                 </div>
@@ -71,7 +69,6 @@ export default function ResourcesPage() {
 
     return (
         <main className="flex h-screen flex-col p-0 bg-[linear-gradient(110deg,var(--color-mindful-green)_0%,var(--color-mindful-dark)_100%)] overflow-hidden">
-            <NavBar />
 
             <SignedOut>
                 <RedirectToSignIn />
