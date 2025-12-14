@@ -3,7 +3,7 @@
 import { useUser } from '@clerk/nextjs';
 import { useEffect, useState } from 'react';
 import { submitApplication, ensureApplicantMetadata } from '@/app/actions';
-import NavBar from '@/app/components/NavBar';
+import CounselorNavBar from '@/app/components/counselor/CounselorNavBar';
 
 export default function VerifyCounselorPage() {
   const { user, isLoaded } = useUser();
@@ -32,7 +32,7 @@ export default function VerifyCounselorPage() {
   if (!isLoaded) {
     return (
       <main className="flex min-h-screen flex-col p-0 bg-[linear-gradient(110deg,var(--color-mindful-green)_0%,var(--color-mindful-dark)_100%)]">
-        <NavBar />
+        <CounselorNavBar />
         <div className="flex flex-grow items-center justify-center p-6 pt-24">
           <div className="text-gray-200">Loading...</div>
         </div>
@@ -44,7 +44,7 @@ export default function VerifyCounselorPage() {
   if (counselorStatus === 'pending') {
     return (
       <main className="flex min-h-screen flex-col p-0 bg-[linear-gradient(110deg,var(--color-mindful-green)_0%,var(--color-mindful-dark)_100%)]">
-        <NavBar />
+        <CounselorNavBar />
         <div className="flex flex-grow items-center justify-center p-6 pt-24">
           <div className="w-full max-w-lg">
             <div className="rounded-2xl bg-[#031207] p-10 md:p-16 border border-gray-900/50 shadow-[4px_4px_0px_0px_rgba(34,197,94,0.15)] flex flex-col items-center space-y-6">
@@ -83,14 +83,14 @@ export default function VerifyCounselorPage() {
 
   return (
     <main className="flex min-h-screen flex-col p-0 bg-[linear-gradient(110deg,var(--color-mindful-green)_0%,var(--color-mindful-dark)_100%)]">
-      <NavBar />
+      <CounselorNavBar />
       <div className="flex flex-grow items-center justify-center p-6 pt-24">
         <div className="w-full max-w-lg">
           <div className="rounded-2xl bg-[#031207] p-10 md:p-16 border border-gray-900/50 shadow-[4px_4px_0px_0px_rgba(34,197,94,0.15)]">
             <h1 className="text-[#42734D] font-kodchasan text-3xl font-medium text-center mb-8">
               Counselor Verification
             </h1>
-            
+
             <form onSubmit={handleSubmit} className="space-y-6">
               <div>
                 <label htmlFor="legalName" className="block text-gray-200 font-kodchasan mb-2">

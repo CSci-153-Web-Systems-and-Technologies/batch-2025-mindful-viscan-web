@@ -19,8 +19,8 @@ export default function SignUpCounselorPage() {
             <SignUp
               path="/sign-up-counselor"
               signInUrl="/sign-in"
-              fallbackRedirectUrl="/counselor-dashboard"
-              forceRedirectUrl="/counselor-dashboard"
+              fallbackRedirectUrl="/verify-counselor"
+              forceRedirectUrl="/verify-counselor"
               unsafeMetadata={{ role: 'counselor' }}
               appearance={{
                 elements: {
