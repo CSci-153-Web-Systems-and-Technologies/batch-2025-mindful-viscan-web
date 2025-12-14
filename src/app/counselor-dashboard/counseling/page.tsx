@@ -114,7 +114,13 @@ export default function CounselingChatPage() {
                     filter: `session_id=eq.${selectedSessionId}`
                 }, (payload) => {
                     const newMsg = payload.new as Message;
-                    setMessages((prev) => [...prev, newMsg]);
+                    setMessages((prev) => {
+                        // Prevent duplicates (Realtime vs Optimistic)
+                        if (prev.some(m => m.id === newMsg.id)) {
+                            return prev;
+                        }
+                        return [...prev, newMsg];
+                    });
                 })
                 .subscribe();
 
@@ -139,25 +145,45 @@ export default function CounselingChatPage() {
     const handleSendMessage = async (content: string) => {
         if (!selectedSessionId || !currentUserId || !session) return;
 
+        // Optimistic Update
+        const optimisticId = `temp-${Date.now()}`;
+        const newOptimisticMsg: Message = {
+            id: optimisticId,
+            session_id: selectedSessionId,
+            sender_id: currentUserId,
+            content: content,
+            created_at: new Date().toISOString(),
+        };
+
+        setMessages((prev) => [...prev, newOptimisticMsg]);
+
         try {
             const token = await session.getToken({ template: 'supabase' });
             const supabase = createAuthenticatedClient(token || '');
 
-            const { error } = await supabase
+            const { data, error } = await supabase
                 .from('messages')
                 .insert({
                     session_id: selectedSessionId,
                     sender_id: currentUserId,
                     content: content
-                });
+                })
+                .select()
+                .single();
 
             if (error) {
                 console.error("Error sending message:", error);
                 alert("Failed to send message. Please try again.");
+                // Rollback
+                setMessages((prev) => prev.filter(m => m.id !== optimisticId));
+            } else if (data) {
+                // Replace optimistic message
+                setMessages((prev) => prev.map(m => m.id === optimisticId ? data : m));
             }
-            // Realtime subscription will add the message to the list
         } catch (error) {
             console.error("Error sending message:", error);
+            // Rollback
+            setMessages((prev) => prev.filter(m => m.id !== optimisticId));
         }
     };
 
