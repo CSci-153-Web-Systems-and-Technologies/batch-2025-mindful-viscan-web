@@ -12,7 +12,12 @@ export default function CounselingChatPage() {
     const { session } = useSession();
 
     const [sessions, setSessions] = useState<Session[]>([]);
-    const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null);
+
+    // Get session ID from URL if present
+    const searchParams = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;
+    const initialSessionId = searchParams?.get('session');
+
+    const [selectedSessionId, setSelectedSessionId] = useState<string | null>(initialSessionId);
     const [currentUserId, setCurrentUserId] = useState('');
     const [messages, setMessages] = useState<Message[]>([]);
     const [loadingMessages, setLoadingMessages] = useState(false);
