@@ -69,10 +69,6 @@ export async function ensureApplicantMetadata() {
         role: 'applicant',
         counselor_status: 'pending',
       },
-      unsafeMetadata: {
-        role: 'applicant', // Mirror for visibility
-        counselor_status: 'pending',
-      }
     });
     return { updated: true };
   } catch (error) {
