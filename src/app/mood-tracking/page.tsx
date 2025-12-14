@@ -6,6 +6,7 @@ import { SignedIn, SignedOut, RedirectToSignIn, useUser, useSession } from '@cle
 import { createAuthenticatedClient } from '@/app/utils/supabase/client';
 import MoodHeatmap from '@/app/components/mood/MoodHeatmap';
 import MoodEntry from '@/app/components/mood/MoodEntry';
+import MoodStats from '@/app/components/mood/MoodStats';
 
 interface MoodLog {
     id: string;
@@ -93,8 +94,8 @@ export default function MoodTrackingPage() {
                             </div>
 
                             {/* 3. Mood Stats */}
-                            <div className="lg:col-span-1 bg-[#031207] border border-gray-900/50 rounded-2xl p-6 min-h-[400px] flex items-center justify-center text-gray-500">
-                                Mood Stats (Coming Soon)
+                            <div className="lg:col-span-1">
+                                <MoodStats logs={logs} />
                             </div>
                         </div>
                     </div>
