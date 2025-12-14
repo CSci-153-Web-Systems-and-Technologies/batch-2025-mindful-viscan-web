@@ -18,17 +18,13 @@ export default function StudentCounselingPage() {
     const [selectedSessionId, setSelectedSessionId] = useState<string | null>(initialSessionId);
     const [currentUserId, setCurrentUserId] = useState('');
     const [messages, setMessages] = useState<Message[]>([]);
+    const [loadingMessages, setLoadingMessages] = useState(false);
 
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
         if (user) {
             setCurrentUserId(user.id);
-            // Reset mock messages when user is loaded
-            setMessages([
-                { id: '1', session_id: 'mock', sender_id: user.id, content: "Hi, I've been feeling really overwhelmed with my thesis lately.", created_at: new Date().toISOString(), is_counselor: false },
-                { id: '2', session_id: 'mock', sender_id: 'counselor_id', content: "Hello. I understand that can be very stressful. I'm here to listen. Can you tell me more about what's causing the most pressure?", created_at: new Date().toISOString(), is_counselor: true },
-            ]);
         }
     }, [user]);
 
@@ -113,23 +109,89 @@ export default function StudentCounselingPage() {
         }
     }, [session, user]);
 
+    // Fetch Messages and Realtime Subscription
+    useEffect(() => {
+        if (!selectedSessionId || !session) return;
+
+        const fetchMessages = async () => {
+            setLoadingMessages(true);
+            const token = await session.getToken({ template: 'supabase' });
+            const supabase = createAuthenticatedClient(token || '');
+
+            const { data, error } = await supabase
+                .from('messages')
+                .select('*')
+                .eq('session_id', selectedSessionId)
+                .order('created_at', { ascending: true });
+
+            if (error) {
+                console.error("Error fetching messages:", error);
+            } else {
+                setMessages(data || []);
+            }
+            setLoadingMessages(false);
+        };
+
+        fetchMessages();
+
+        // Realtime Subscription
+        const setupSubscription = async () => {
+            const token = await session.getToken({ template: 'supabase' });
+            const supabase = createAuthenticatedClient(token || '');
+
+            const channel = supabase
+                .channel(`session-${selectedSessionId}`)
+                .on('postgres_changes', {
+                    event: 'INSERT',
+                    schema: 'public',
+                    table: 'messages',
+                    filter: `session_id=eq.${selectedSessionId}`
+                }, (payload) => {
+                    const newMsg = payload.new as Message;
+                    setMessages((prev) => [...prev, newMsg]);
+                })
+                .subscribe();
+
+            return () => {
+                supabase.removeChannel(channel);
+            };
+        };
+
+        const unsubscribePromise = setupSubscription();
+
+        return () => {
+            unsubscribePromise.then(unsubscribe => unsubscribe());
+        };
+
+    }, [selectedSessionId, session]);
+
     const handleSelectSession = (id: string) => {
         setSelectedSessionId(id);
-        // TODO: Fetch real messages for this session
     };
 
-    const handleSendMessage = (content: string) => {
-        // Add optimistic message
-        const newMsg: Message = {
-            id: Date.now().toString(),
-            session_id: selectedSessionId || '',
-            sender_id: currentUserId,
-            content,
-            created_at: new Date().toISOString(),
-            is_counselor: false // Student is sender
-        };
-        setMessages(prev => [...prev, newMsg]);
-        // TODO: Send to backend
+    const handleSendMessage = async (content: string) => {
+        if (!selectedSessionId || !currentUserId || !session) return;
+
+        try {
+            const token = await session.getToken({ template: 'supabase' });
+            const supabase = createAuthenticatedClient(token || '');
+
+            const { error } = await supabase
+                .from('messages')
+                .insert({
+                    session_id: selectedSessionId,
+                    sender_id: currentUserId,
+                    content: content
+                });
+
+            if (error) {
+                console.error("Error sending message:", error);
+                alert("Failed to send message. Please try again.");
+            }
+            // Realtime subscription will add the message to the list
+        } catch (error) {
+            console.error("Error sending message:", error);
+        }
     };
 
     const selectedSession = sessions.find(s => s.id === selectedSessionId);
@@ -165,6 +227,7 @@ export default function StudentCounselingPage() {
                                 currentUserId={currentUserId}
                                 messages={messages}
                                 onSendMessage={handleSendMessage}
+                                loading={loadingMessages}
                                 isSessionClosed={selectedSession ? ['Completed', 'Cancelled'].includes(selectedSession.status) : false}
                             />
                         </div>
