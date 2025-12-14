@@ -42,8 +42,8 @@ export default function CounselingSidebar({ sessions, selectedSessionId, onSelec
                 key={session.id}
                 onClick={() => onSelectSession(session.id)}
                 className={`p-3 rounded-xl cursor-pointer transition-all mb-2 border ${isSelected
-                        ? 'bg-[#1A2E1A] border-mindful-green/50 text-white'
-                        : 'bg-transparent border-transparent hover:bg-[#0F1E0F] text-gray-400 hover:text-gray-200'
+                    ? 'bg-[#1A2E1A] border-mindful-green/50 text-white'
+                    : 'bg-transparent border-transparent hover:bg-[#0F1E0F] text-gray-400 hover:text-gray-200'
                     }`}
             >
                 <div className="flex justify-between items-start">
@@ -80,20 +80,6 @@ export default function CounselingSidebar({ sessions, selectedSessionId, onSelec
                             activeSessions.map(renderSessionItem)
                         ) : (
                             <p className="text-gray-600 text-xs px-2 italic">No active sessions</p>
-                        )}
-                    </div>
-                </section>
-
-                {/* Pending Section */}
-                <section>
-                    <h3 className="text-xs font-semibold text-gray-400 mb-3 px-2 uppercase tracking-wider">
-                        Pending
-                    </h3>
-                    <div className="space-y-1">
-                        {pendingSessions.length > 0 ? (
-                            pendingSessions.map(renderSessionItem)
-                        ) : (
-                            <p className="text-gray-600 text-xs px-2 italic">No pending requests</p>
                         )}
                     </div>
                 </section>

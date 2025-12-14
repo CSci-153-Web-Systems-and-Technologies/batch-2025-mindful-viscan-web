@@ -1,3 +1,5 @@
+'use client';
+
 import CounselorSessionList from '@/app/components/counselor/CounselorSessionList';
 import CounselorNavBar from '@/app/components/counselor/CounselorNavBar';
 import { SignedIn, SignedOut, RedirectToSignIn } from '@clerk/nextjs';

@@ -19,6 +19,7 @@ interface ChatInterfaceProps {
     currentUserId: string;
     onSendMessage: (content: string) => void;
     loading?: boolean;
+    isSessionClosed?: boolean;
 }
 
 export default function ChatInterface({
@@ -27,7 +28,8 @@ export default function ChatInterface({
     messages,
     currentUserId,
     onSendMessage,
-    loading = false
+    loading = false,
+    isSessionClosed = false
 }: ChatInterfaceProps) {
     const [newMessage, setNewMessage] = useState('');
     const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -38,7 +40,7 @@ export default function ChatInterface({
     }, [messages]);
 
     const handleSend = () => {
-        if (!newMessage.trim() || !sessionId) return;
+        if (!newMessage.trim() || !sessionId || isSessionClosed) return;
         onSendMessage(newMessage);
         setNewMessage('');
     };
@@ -74,6 +76,11 @@ export default function ChatInterface({
                     <h2 className="text-gray-200 font-medium text-lg">
                         {sessionTitle || 'Session Chat'}
                     </h2>
+                    {isSessionClosed && (
+                        <span className="text-xs text-red-500 font-medium uppercase tracking-wider ml-2 border border-red-500/20 bg-red-500/10 px-2 py-0.5 rounded">
+                            Closed
+                        </span>
+                    )}
                 </div>
             </header>
 
@@ -105,8 +112,8 @@ export default function ChatInterface({
                                 {/* Message Bubble */}
                                 <div
                                     className={`max-w-[70%] px-4 py-3 rounded-2xl text-sm leading-relaxed ${isSelf
-                                            ? 'bg-[#1A2E1A] text-gray-200 rounded-br-none border border-mindful-green/20'
-                                            : 'bg-[#0F1E0F] text-gray-300 rounded-bl-none border border-gray-800'
+                                        ? 'bg-[#1A2E1A] text-gray-200 rounded-br-none border border-mindful-green/20'
+                                        : 'bg-[#0F1E0F] text-gray-300 rounded-bl-none border border-gray-800'
                                         }`}
                                 >
                                     {msg.content}
@@ -131,37 +138,43 @@ export default function ChatInterface({
 
             {/* Input Area */}
             <div className="p-4 bg-[#031207] border-t border-gray-800">
-                <div className="relative flex items-center bg-[#0F1E0F] border border-gray-700/50 rounded-xl px-2 focus-within:border-mindful-green/50 transition-colors">
-                    {/* Attachment Icon */}
-                    <button className="p-2 text-gray-500 hover:text-gray-300 transition-colors">
-                        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
-                        </svg>
-                    </button>
+                {isSessionClosed ? (
+                    <div className="flex items-center justify-center p-3 bg-[#0F1E0F] border border-gray-800 rounded-xl text-gray-500 text-sm italic">
+                        This session is closed. No new messages can be sent.
+                    </div>
+                ) : (
+                    <div className="relative flex items-center bg-[#0F1E0F] border border-gray-700/50 rounded-xl px-2 focus-within:border-mindful-green/50 transition-colors">
+                        {/* Attachment Icon */}
+                        <button className="p-2 text-gray-500 hover:text-gray-300 transition-colors">
+                            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
+                            </svg>
+                        </button>
 
-                    <input
-                        type="text"
-                        value={newMessage}
-                        onChange={(e) => setNewMessage(e.target.value)}
-                        onKeyDown={handleKeyDown}
-                        placeholder="Type a message..."
-                        className="flex-1 bg-transparent border-none focus:ring-0 text-gray-200 placeholder-gray-500 py-3 px-2"
-                    />
+                        <input
+                            type="text"
+                            value={newMessage}
+                            onChange={(e) => setNewMessage(e.target.value)}
+                            onKeyDown={handleKeyDown}
+                            placeholder="Type a message..."
+                            className="flex-1 bg-transparent border-none focus:ring-0 text-gray-200 placeholder-gray-500 py-3 px-2"
+                        />
 
-                    {/* Send Icon */}
-                    <button
-                        onClick={handleSend}
-                        disabled={!newMessage.trim()}
-                        className={`p-2 transition-colors ${newMessage.trim()
+                        {/* Send Icon */}
+                        <button
+                            onClick={handleSend}
+                            disabled={!newMessage.trim()}
+                            className={`p-2 transition-colors ${newMessage.trim()
                                 ? 'text-mindful-green hover:text-green-400 cursor-pointer'
                                 : 'text-gray-600 cursor-not-allowed'
-                            }`}
-                    >
-                        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
-                        </svg>
-                    </button>
-                </div>
+                                }`}
+                        >
+                            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+                            </svg>
+                        </button>
+                    </div>
+                )}
             </div>
         </div>
     );
