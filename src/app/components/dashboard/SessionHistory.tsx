@@ -9,6 +9,7 @@ interface CounselingSession {
     id: string;
     status: string;
     type: string;
+    title?: string;
     scheduled_at: string;
     counselor: {
         id: string;
@@ -76,6 +77,7 @@ export default function SessionHistory() {
         id,
         status,
         type,
+        title,
         scheduled_at,
         counselor_id
       `)
@@ -131,6 +133,7 @@ export default function SessionHistory() {
                 id: session.id,
                 status: session.status || 'Pending',
                 type: session.type || 'General',
+                title: session.title,
                 scheduled_at: session.scheduled_at,
                 counselor: session.counselor ? {
                     id: session.counselor.id,
@@ -188,6 +191,7 @@ export default function SessionHistory() {
         return (
             session.status?.toLowerCase().includes(searchTerm) ||
             session.type?.toLowerCase().includes(searchTerm) ||
+            session.title?.toLowerCase().includes(searchTerm) ||
             session.counselor?.full_name?.toLowerCase().includes(searchTerm) ||
             session.counselor?.email?.toLowerCase().includes(searchTerm)
         );
@@ -282,6 +286,7 @@ export default function SessionHistory() {
                                             />
                                         </th>
                                         <th className="px-4 py-3 text-left text-gray-200 text-sm font-medium">Status</th>
+                                        <th className="px-4 py-3 text-left text-gray-200 text-sm font-medium">Topic</th>
                                         <th className="px-4 py-3 text-left text-gray-200 text-sm font-medium">
                                             <div className="flex items-center gap-2">
                                                 Counselor
@@ -297,7 +302,7 @@ export default function SessionHistory() {
                                 <tbody>
                                     {paginatedSessions.length === 0 ? (
                                         <tr>
-                                            <td colSpan={5} className="px-4 py-8 text-center text-gray-400">
+                                            <td colSpan={6} className="px-4 py-8 text-center text-gray-400">
                                                 No sessions found
                                             </td>
                                         </tr>
@@ -317,6 +322,7 @@ export default function SessionHistory() {
                                                     />
                                                 </td>
                                                 <td className="px-4 py-3 text-gray-200 text-sm">{session.status || 'N/A'}</td>
+                                                <td className="px-4 py-3 text-gray-200 text-sm font-medium text-mindful-green">{session.title || 'No Topic'}</td>
                                                 <td className="px-4 py-3 text-gray-200 text-sm">
                                                     {getCounselorDisplay(session.counselor)}
                                                 </td>
