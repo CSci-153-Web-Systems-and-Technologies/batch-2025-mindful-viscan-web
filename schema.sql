@@ -104,29 +104,47 @@ TO authenticated
 WITH CHECK ( (select auth.jwt() ->> 'sub') = student_id );
 
 -- 5. COUNSELOR PERMISSIONS
+-- Helper function to prevent recursion
+CREATE OR REPLACE FUNCTION public.is_counselor()
+RETURNS boolean
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+BEGIN
+  RETURN EXISTS (
+    SELECT 1 
+    FROM public.users
+    WHERE id = (auth.jwt() ->> 'sub') 
+    AND role = 'counselor'
+  );
+END;
+$$;
+
 -- Allow counselors to see everything
 CREATE POLICY "Counselors can view all sessions"
 ON public.counseling_sessions
 FOR SELECT
 TO authenticated
-USING (
-  (select role from public.users where id = (auth.jwt() ->> 'sub')) = 'counselor'
-);
+USING ( is_counselor() );
 
 -- Allow counselors to update sessions (Accept/Reject)
 CREATE POLICY "Counselors can update sessions"
 ON public.counseling_sessions
 FOR UPDATE
 TO authenticated
-USING (
-  (select role from public.users where id = (auth.jwt() ->> 'sub')) = 'counselor'
-);
+USING ( is_counselor() );
+
+-- Allow students to delete their own sessions
+CREATE POLICY "Students can delete own sessions"
+ON public.counseling_sessions
+FOR DELETE
+TO authenticated
+USING ( (select auth.jwt() ->> 'sub') = student_id );
 
 -- Allow counselors to view student profiles
 CREATE POLICY "Counselors can view student profiles"
 ON public.users
 FOR SELECT
 TO authenticated
-USING (
-  (select role from public.users where id = (auth.jwt() ->> 'sub')) = 'counselor'
-);
+USING ( is_counselor() );

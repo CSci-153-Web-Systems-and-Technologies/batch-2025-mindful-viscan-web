@@ -47,7 +47,7 @@ export default function SessionHistory() {
                 .from('users')
                 .select('id')
                 .eq('id', user.id)
-                .single();
+                .maybeSingle();
 
             if (userData && !userError) {
                 studentId = userData.id;
@@ -57,16 +57,15 @@ export default function SessionHistory() {
                     .from('users')
                     .select('id')
                     .eq('clerk_id', user.id)
-                    .single();
+                    .maybeSingle();
 
                 if (userDataByClerkId && !clerkIdError) {
                     studentId = userDataByClerkId.id;
                 } else {
-                    // User not found in Supabase - this is okay, they might not have any sessions yet
-                    console.log('User not found in Supabase users table. This is normal for new users.');
-                    setSessions([]);
-                    setLoading(false);
-                    return;
+                    // If user not found in Supabase users table, fallback to Clerk ID
+                    // This handles cases where the users table sync hasn't happened yet
+                    console.log('User not found in Supabase users table, falling back to Clerk ID:', user.id);
+                    studentId = user.id;
                 }
             }
 
@@ -86,7 +85,12 @@ export default function SessionHistory() {
 
             if (joinError) {
                 // Log detailed error information
-                console.error('Error fetching counseling sessions:', joinError);
+                console.error('Error fetching counseling sessions (Query Failed):');
+                console.error('Student ID used:', studentId);
+                console.error('Error Message:', joinError.message);
+                console.error('Error Code:', joinError.code);
+                console.error('Error Details:', joinError.details);
+                console.error('Full Error Object:', JSON.stringify(joinError, null, 2));
 
                 // Common error: Table doesn't exist or RLS policy issue
                 if (joinError.code === 'PGRST116' || joinError.message?.includes('relation') || joinError.message?.includes('does not exist')) {

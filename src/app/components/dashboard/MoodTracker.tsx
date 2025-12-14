@@ -32,19 +32,21 @@ export default function MoodTracker() {
                     .from('users')
                     .select('id')
                     .eq('id', user.id)
-                    .single();
+                    .maybeSingle();
 
                 if (!userData) {
                     const { data: userDataByClerkId } = await supabase
                         .from('users')
                         .select('id')
                         .eq('clerk_id', user.id)
-                        .single();
+                        .maybeSingle();
 
                     if (userDataByClerkId) {
                         userId = userDataByClerkId.id;
                     } else {
-                        return;
+
+                        // Fallback to Clerk ID
+                        userId = user.id;
                     }
                 } else {
                     userId = userData.id;
@@ -102,24 +104,21 @@ export default function MoodTracker() {
                 .from('users')
                 .select('id')
                 .eq('id', user.id)
-                .single();
-
-            if (userFetchError) {
-                console.error('Error fetching user data:', userFetchError);
-            }
+                .maybeSingle();
 
             if (!userData) {
                 const { data: userDataByClerkId } = await supabase
                     .from('users')
                     .select('id')
                     .eq('clerk_id', user.id)
-                    .single();
+                    .maybeSingle();
 
                 if (userDataByClerkId) {
                     userId = userDataByClerkId.id;
                 } else {
-                    console.error('User not synced to database.');
-                    return;
+
+                    console.log('User not synced to database, utilizing Clerk ID fallback.');
+                    userId = user.id;
                 }
             } else {
                 userId = userData.id;
@@ -181,20 +180,21 @@ export default function MoodTracker() {
                 .from('users')
                 .select('id')
                 .eq('id', user.id)
-                .single();
+                .maybeSingle();
 
             if (!userData) {
                 const { data: userDataByClerkId } = await supabase
                     .from('users')
                     .select('id')
                     .eq('clerk_id', user.id)
-                    .single();
+                    .maybeSingle();
 
                 if (userDataByClerkId) {
                     userId = userDataByClerkId.id;
                 } else {
-                    console.error('User not synced to database.');
-                    return;
+
+                    console.log('User not synced to database, utilizing Clerk ID fallback.');
+                    userId = user.id;
                 }
             } else {
                 userId = userData.id;
