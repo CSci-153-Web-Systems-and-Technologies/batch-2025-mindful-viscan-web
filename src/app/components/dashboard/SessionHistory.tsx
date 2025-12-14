@@ -246,8 +246,8 @@ export default function SessionHistory() {
     };
 
     return (
-        <div className="flex flex-col flex-1 rounded-lg bg-[#031207] border-t border-l border-gray-900/50 border-r-2 border-b-2 border-r-mindful-green/60 border-b-mindful-green/60 shadow-[4px_4px_0px_0px_rgba(34,197,94,0.15)] p-6">
-            <div className="flex flex-col flex-1 gap-4">
+        <div className="flex flex-col flex-1 rounded-lg bg-[#031207] border-t border-l border-gray-900/50 border-r-2 border-b-2 border-r-mindful-green/60 border-b-mindful-green/60 shadow-[4px_4px_0px_0px_rgba(34,197,94,0.15)] p-6 min-h-[400px] h-full">
+            <div className="flex flex-col flex-1 gap-4 overflow-hidden">
                 <h2 className="text-gray-200 text-lg font-medium">Session History</h2>
 
                 {/* Filter and Columns */}
@@ -279,7 +279,7 @@ export default function SessionHistory() {
                     </div>
                 ) : (
                     <>
-                        <div className="overflow-x-auto">
+                        <div className="overflow-x-auto flex-1 overflow-y-auto min-h-0 border-b border-gray-800 scrollbar-thin scrollbar-thumb-gray-700 scrollbar-track-transparent">
                             <table className="w-full">
                                 <thead>
                                     <tr className="bg-[#0F1E0F] border-b border-gray-700">
@@ -378,7 +378,7 @@ export default function SessionHistory() {
                         </div>
 
                         {/* Action Buttons - Pushed to bottom */}
-                        <div className="flex justify-end gap-3 mt-auto pt-4">
+                        <div className="flex justify-end gap-3 pt-2">
                             <button
                                 onClick={handleDeleteSelected}
                                 disabled={selectedRows.size === 0 || isDeleting}

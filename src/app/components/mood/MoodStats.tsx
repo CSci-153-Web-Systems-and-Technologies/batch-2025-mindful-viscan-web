@@ -98,13 +98,13 @@ export default function MoodStats({ logs }: MoodStatsProps) {
     const domMood = getMoodLabel(stats.dominantMood);
 
     return (
-        <div className="w-full flex flex-col gap-6">
+        <div className="w-full bg-[#031207] border border-gray-900/50 rounded-2xl p-6 flex flex-col gap-6">
             <h2 className="text-xl font-kodchasan font-semibold text-white pl-2 border-l-4 border-mindful-green">
                 Mood Stats
             </h2>
 
-            {/* Stats Card */}
-            <div className="bg-[#031207] rounded-xl p-0 flex flex-col gap-4">
+            {/* Stats Items */}
+            <div className="flex flex-col gap-4">
 
                 {/* Streak */}
                 <div className="flex items-center justify-between p-4 bg-[#0F1E0F] rounded-xl border border-gray-800">
