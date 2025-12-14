@@ -1,10 +1,11 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import NavBar from '@/app/components/NavBar';
 import { SignedIn, SignedOut, RedirectToSignIn, useUser, useSession } from '@clerk/nextjs';
 import { createAuthenticatedClient } from '@/app/utils/supabase/client';
 import MoodHeatmap from '@/app/components/mood/MoodHeatmap';
+import MoodEntry from '@/app/components/mood/MoodEntry';
 
 interface MoodLog {
     id: string;
@@ -20,37 +21,38 @@ export default function MoodTrackingPage() {
     const [logs, setLogs] = useState<MoodLog[]>([]);
     const [loading, setLoading] = useState(true);
 
-    useEffect(() => {
-        const fetchLogs = async () => {
-            if (!user || !session) return;
-            try {
-                setLoading(true);
-                const token = await session.getToken({ template: 'supabase' });
-                const supabase = createAuthenticatedClient(token || '');
+    const fetchLogs = useCallback(async () => {
+        if (!user || !session) return;
+        try {
+            // Keep loading true only on initial load if needed, or silent refresh?
+            // Let's not set loading=true here to avoid flickering on refresh
+            const token = await session.getToken({ template: 'supabase' });
+            const supabase = createAuthenticatedClient(token || '');
 
-                // Fetch logs for current user
-                const { data, error } = await supabase
-                    .from('mood_logs')
-                    .select('*')
-                    .eq('user_id', user.id)
-                    .order('created_at', { ascending: false }); // Latest first
+            // Fetch logs for current user
+            const { data, error } = await supabase
+                .from('mood_logs')
+                .select('*')
+                .eq('user_id', user.id)
+                .order('created_at', { ascending: false }); // Latest first
 
-                if (error) {
-                    console.error("Error fetching mood logs:", error);
-                } else {
-                    setLogs(data || []);
-                }
-            } catch (err) {
-                console.error(err);
-            } finally {
-                setLoading(false);
+            if (error) {
+                console.error("Error fetching mood logs:", error);
+            } else {
+                setLogs(data || []);
             }
-        };
+        } catch (err) {
+            console.error(err);
+        } finally {
+            setLoading(false);
+        }
+    }, [user, session]);
 
+    useEffect(() => {
         if (isLoaded && user) {
             fetchLogs();
         }
-    }, [user, session, isLoaded]);
+    }, [isLoaded, user, fetchLogs]);
 
     return (
         <main className="flex min-h-screen flex-col p-0 bg-[linear-gradient(110deg,var(--color-mindful-green)_0%,var(--color-mindful-dark)_100%)]">
@@ -75,7 +77,7 @@ export default function MoodTrackingPage() {
                             <h2 className="text-xl font-kodchasan font-semibold text-white mb-6 pl-2 border-l-4 border-mindful-green">
                                 Your Year in Pixels
                             </h2>
-                            {loading ? (
+                            {loading && logs.length === 0 ? (
                                 <div className="flex justify-center items-center h-[140px] text-gray-500 animate-pulse">
                                     Loading history...
                                 </div>
@@ -86,8 +88,8 @@ export default function MoodTrackingPage() {
 
                         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                             {/* 2. Mood Entry Form */}
-                            <div className="lg:col-span-2 bg-[#031207] border border-gray-900/50 rounded-2xl p-6 min-h-[400px] flex items-center justify-center text-gray-500">
-                                Mood Entry Form Component (Coming Soon)
+                            <div className="lg:col-span-2">
+                                <MoodEntry onEntryAdded={fetchLogs} />
                             </div>
 
                             {/* 3. Mood Stats */}
