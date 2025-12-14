@@ -114,14 +114,16 @@ export default function SessionHistory() {
             if (counselorIds.length > 0) {
                 const { data: counselorsData, error: counselorsError } = await supabase
                     .from('users')
-                    .select('id, full_name, email')
+                    .select('id, full_name') // Removed email as it doesn't exist in schema
                     .in('id', counselorIds);
 
                 if (counselorsError) {
-                    console.error('Error fetching counselors:', counselorsError);
+                    console.error('Error fetching counselors LOG START');
+                    console.error('Error stringified:', JSON.stringify(counselorsError, Object.getOwnPropertyNames(counselorsError), 2));
+                    console.error('Error fetching counselors LOG END');
                 }
 
-                // Map counselor data to sessions (even if there was an error, continue with available data)
+                // Map counselor data to sessions
                 const counselorsMap = new Map(
                     (counselorsData || []).map((c: any) => [c.id, c])
                 );
@@ -142,7 +144,7 @@ export default function SessionHistory() {
                 counselor: session.counselor ? {
                     id: session.counselor.id,
                     full_name: session.counselor.full_name,
-                    email: session.counselor.email,
+                    // email removed
                 } : null,
             }));
             setSessions(transformedSessions);
@@ -237,10 +239,10 @@ export default function SessionHistory() {
         return `${date.getMonth() + 1}/${date.getDate()}`;
     };
 
-    // Get counselor display name/email
+    // Get counselor display name
     const getCounselorDisplay = (counselor: CounselingSession['counselor']) => {
         if (!counselor) return 'N/A';
-        return counselor.email || counselor.full_name || 'Unknown';
+        return counselor.full_name || 'Unknown Counselor';
     };
 
     return (
