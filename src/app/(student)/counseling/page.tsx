@@ -1,13 +1,13 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { SignedIn, SignedOut, RedirectToSignIn, useUser, useSession } from '@clerk/nextjs';
 import { createAuthenticatedClient } from '@/lib/supabaseClient';
 import CounselingSidebar, { Session } from '@/app/components/counseling/CounselingSidebar';
 import ChatInterface, { Message } from '@/app/components/counseling/ChatInterface';
 import { useSearchParams } from 'next/navigation';
 
-export default function StudentCounselingPage() {
+function StudentCounselingContent() {
     const { user } = useUser();
     const { session } = useSession();
     const searchParams = useSearchParams();
@@ -259,5 +259,13 @@ export default function StudentCounselingPage() {
                 </div>
             </SignedIn>
         </main>
+    );
+}
+
+export default function StudentCounselingPage() {
+    return (
+        <Suspense fallback={<div className="flex h-screen items-center justify-center text-white">Loading...</div>}>
+            <StudentCounselingContent />
+        </Suspense>
     );
 }
