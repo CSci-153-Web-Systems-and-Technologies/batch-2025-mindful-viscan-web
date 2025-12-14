@@ -11,7 +11,7 @@ A comprehensive web application designed to support student mental health throug
   - Cancel or delete sessions.
 - **Real-time Chat**: 
   - Direct messaging with assigned counselors.
-  - Real-time updates for active sessions.
+  - **Persistent Navigation**: Smooth transitioning between chat, dashboard, and resources without reloading.
 - **Mood Tracking**: 
   - Daily mood logging (Rating + Summary + Notes).
   - **Year in Pixels** interactive heatmap.
@@ -20,22 +20,46 @@ A comprehensive web application designed to support student mental health throug
 - **Resources**: Access curated mental health articles and videos.
 
 ### 👩‍⚕️ Counselor Dashboard
-- **Session Oversight**: 
-  - View all student requests.
+- **Smart Session Management**: 
+  - **Onboarding**: Streamlined "One-Click" verification for new counselors.
+  - **Tabbed View**: Separate "Available Requests" (Pending) vs "My Sessions" (Active).
   - Accept, decline, or complete sessions.
 - **Chat Interface**: 
-  - Dedicated chat interface to communicate with students.
-  - Split view for managing multiple conversations.
+  - Dedicated chat workspace with sidebar session selector.
+  - Context-aware session history.
 - **Resource Management**: 
   - CRUD operations for resources (Add, Edit, Delete).
-  - Categorization and search functionality.
 
 ### 🛠 Technical Highlights
+- **Persistent Layouts**: Utilizes Next.js **Route Groups** (`(student)` and `counselor-dashboard`) to maintain UI state (NavBars, Sidebars) during navigation.
 - **Real-time Engine**: Powered by Supabase Realtime for instant chat and status updates.
 - **Authentication**: Secure user management via Clerk (integrating Roles and Metadata).
 - **Database**: PostgreSQL (Supabase) with Row Level Security (RLS) policies for privacy.
-- **Sync Logic**: Custom webhook handlers to sync Clerk user profiles with Supabase database.
-- **UI/UX**: Modern, responsive design using Tailwind CSS with custom "Mindful Green" palette.
+- **Sync Logic**: Custom webhook handlers (Role Sync) to sync Clerk user profiles with Supabase database.
+- **UI/UX**: Modern, responsive design using Tailwind CSS with custom "Mindful Green" palette and smooth CSS gradients.
+
+## 📂 Project Structure
+
+```text
+src/
+├── app/
+│   ├── (auth)/                 # Authentication routes (Sign In/Up)
+│   ├── (student)/              # Student Route Group (Shared Persistent Layout)
+│   │   ├── dashboard/          # Student Dashboard
+│   │   ├── counseling/         # Student Chat & Session Request
+│   │   ├── mood-tracking/      # Mood Logger & Heatmap
+│   │   ├── resources/          # Resource Library
+│   │   └── layout.tsx          # <NavBar /> Persistence
+│   ├── counselor-dashboard/    # Counselor Area
+│   │   ├── counseling/         # Counselor Chat
+│   │   ├── resources/          # Resource Management
+│   │   └── layout.tsx          # <CounselorNavBar /> Persistence
+│   ├── api/                    # Backend API Routes (Webhooks)
+│   └── globals.css             # Tailwind & Theme Styles
+├── components/                 # Reusable UI Components
+├── lib/                        # Utilities (Supabase Client, Helper functions)
+└── middleware.ts               # Auhtentication & Routing Middleware
+```
 
 ## 🏗 Tech Stack
 
