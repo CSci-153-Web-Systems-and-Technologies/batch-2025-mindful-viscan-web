@@ -1,9 +1,57 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import NavBar from '@/app/components/NavBar';
-import { SignedIn, SignedOut, RedirectToSignIn } from '@clerk/nextjs';
+import { SignedIn, SignedOut, RedirectToSignIn, useUser, useSession } from '@clerk/nextjs';
+import { createAuthenticatedClient } from '@/app/utils/supabase/client';
+import MoodHeatmap from '@/app/components/mood/MoodHeatmap';
+
+interface MoodLog {
+    id: string;
+    created_at: string;
+    rating: number; // 1-5
+    note?: string;
+    summary?: string;
+}
 
 export default function MoodTrackingPage() {
+    const { user, isLoaded } = useUser();
+    const { session } = useSession();
+    const [logs, setLogs] = useState<MoodLog[]>([]);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        const fetchLogs = async () => {
+            if (!user || !session) return;
+            try {
+                setLoading(true);
+                const token = await session.getToken({ template: 'supabase' });
+                const supabase = createAuthenticatedClient(token || '');
+
+                // Fetch logs for current user
+                const { data, error } = await supabase
+                    .from('mood_logs')
+                    .select('*')
+                    .eq('user_id', user.id)
+                    .order('created_at', { ascending: false }); // Latest first
+
+                if (error) {
+                    console.error("Error fetching mood logs:", error);
+                } else {
+                    setLogs(data || []);
+                }
+            } catch (err) {
+                console.error(err);
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        if (isLoaded && user) {
+            fetchLogs();
+        }
+    }, [user, session, isLoaded]);
+
     return (
         <main className="flex min-h-screen flex-col p-0 bg-[linear-gradient(110deg,var(--color-mindful-green)_0%,var(--color-mindful-dark)_100%)]">
             <NavBar />
@@ -20,11 +68,20 @@ export default function MoodTrackingPage() {
                         <p className="text-gray-400">Track your daily mood and build your streak.</p>
                     </div>
 
-                    {/* Components Placeholders */}
+                    {/* Components */}
                     <div className="space-y-8">
                         {/* 1. Heatmap */}
-                        <div className="w-full bg-[#031207] border border-gray-900/50 rounded-2xl p-6 min-h-[200px] flex items-center justify-center text-gray-500">
-                            Mood Heatmap Component (Coming Soon)
+                        <div className="w-full bg-[#031207] border border-gray-900/50 rounded-2xl p-6 min-h-[200px]">
+                            <h2 className="text-xl font-kodchasan font-semibold text-white mb-6 pl-2 border-l-4 border-mindful-green">
+                                Your Year in Pixels
+                            </h2>
+                            {loading ? (
+                                <div className="flex justify-center items-center h-[140px] text-gray-500 animate-pulse">
+                                    Loading history...
+                                </div>
+                            ) : (
+                                <MoodHeatmap logs={logs} />
+                            )}
                         </div>
 
                         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
