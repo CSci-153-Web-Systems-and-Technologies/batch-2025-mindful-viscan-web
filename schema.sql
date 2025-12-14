@@ -102,3 +102,31 @@ ON public.counseling_sessions
 FOR INSERT
 TO authenticated
 WITH CHECK ( (select auth.jwt() ->> 'sub') = student_id );
+
+-- 5. COUNSELOR PERMISSIONS
+-- Allow counselors to see everything
+CREATE POLICY "Counselors can view all sessions"
+ON public.counseling_sessions
+FOR SELECT
+TO authenticated
+USING (
+  (select role from public.users where id = (auth.jwt() ->> 'sub')) = 'counselor'
+);
+
+-- Allow counselors to update sessions (Accept/Reject)
+CREATE POLICY "Counselors can update sessions"
+ON public.counseling_sessions
+FOR UPDATE
+TO authenticated
+USING (
+  (select role from public.users where id = (auth.jwt() ->> 'sub')) = 'counselor'
+);
+
+-- Allow counselors to view student profiles
+CREATE POLICY "Counselors can view student profiles"
+ON public.users
+FOR SELECT
+TO authenticated
+USING (
+  (select role from public.users where id = (auth.jwt() ->> 'sub')) = 'counselor'
+);

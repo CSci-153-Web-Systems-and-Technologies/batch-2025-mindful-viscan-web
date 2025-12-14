@@ -3,6 +3,7 @@
 import { useUser, useSession } from '@clerk/nextjs';
 import { useEffect, useState } from 'react';
 import { createAuthenticatedClient } from '@/lib/supabaseClient';
+import RequestSessionModal from './RequestSessionModal';
 
 interface CounselingSession {
     id: string;
@@ -24,140 +25,161 @@ export default function SessionHistory() {
     const [filter, setFilter] = useState('');
     const [selectedRows, setSelectedRows] = useState<Set<string>>(new Set());
     const [currentPage, setCurrentPage] = useState(1);
+    const [isModalOpen, setIsModalOpen] = useState(false);
+    const [isDeleting, setIsDeleting] = useState(false);
     const rowsPerPage = 5;
+
+    const fetchSessions = async () => {
+        if (!user?.id || !session) return;
+
+        const token = await session.getToken({ template: 'supabase' });
+        const supabase = createAuthenticatedClient(token || '');
+
+        try {
+            setLoading(true);
+
+            // Try to find user in Supabase - check if id matches Clerk userId or if there's a clerk_id field
+            let studentId = user.id;
+
+            // First try: assume users.id matches Clerk userId
+            const { data: userData, error: userError } = await supabase
+                .from('users')
+                .select('id')
+                .eq('id', user.id)
+                .single();
+
+            if (userData && !userError) {
+                studentId = userData.id;
+            } else {
+                // If not found, try clerk_id field
+                const { data: userDataByClerkId, error: clerkIdError } = await supabase
+                    .from('users')
+                    .select('id')
+                    .eq('clerk_id', user.id)
+                    .single();
+
+                if (userDataByClerkId && !clerkIdError) {
+                    studentId = userDataByClerkId.id;
+                } else {
+                    // User not found in Supabase - this is okay, they might not have any sessions yet
+                    console.log('User not found in Supabase users table. This is normal for new users.');
+                    setSessions([]);
+                    setLoading(false);
+                    return;
+                }
+            }
+
+            // Fetch counseling sessions
+            const { data: joinedData, error: joinError } = await supabase
+                .from('counseling_sessions')
+                .select(`
+        id,
+        status,
+        type,
+        scheduled_at,
+        counselor_id
+      `)
+                .eq('student_id', studentId)
+                .order('scheduled_at', { ascending: false });
+
+            if (joinError) {
+                // Log detailed error information
+                console.error('Error fetching counseling sessions:', joinError);
+
+                // Common error: Table doesn't exist or RLS policy issue
+                if (joinError.code === 'PGRST116' || joinError.message?.includes('relation') || joinError.message?.includes('does not exist')) {
+                    console.warn('Possible issue: Table "counseling_sessions" may not exist or RLS policies may be blocking access.');
+                }
+
+                setSessions([]);
+                return;
+            }
+
+            if (!joinedData) {
+                setSessions([]);
+                return;
+            }
+
+            let sessionsData = joinedData;
+
+            // Fetch counselor info separately if counselor_id exists
+            const counselorIds = [...new Set(joinedData.map((s: any) => s.counselor_id).filter(Boolean))];
+
+            if (counselorIds.length > 0) {
+                const { data: counselorsData, error: counselorsError } = await supabase
+                    .from('users')
+                    .select('id, full_name, email')
+                    .in('id', counselorIds);
+
+                if (counselorsError) {
+                    console.error('Error fetching counselors:', counselorsError);
+                }
+
+                // Map counselor data to sessions (even if there was an error, continue with available data)
+                const counselorsMap = new Map(
+                    (counselorsData || []).map((c: any) => [c.id, c])
+                );
+
+                sessionsData = sessionsData.map((session: any) => ({
+                    ...session,
+                    counselor: session.counselor_id ? (counselorsMap.get(session.counselor_id) || null) : null,
+                }));
+            }
+
+            // Transform data to match our interface
+            const transformedSessions = sessionsData.map((session: any) => ({
+                id: session.id,
+                status: session.status || 'Pending',
+                type: session.type || 'General',
+                scheduled_at: session.scheduled_at,
+                counselor: session.counselor ? {
+                    id: session.counselor.id,
+                    full_name: session.counselor.full_name,
+                    email: session.counselor.email,
+                } : null,
+            }));
+            setSessions(transformedSessions);
+        } catch (error) {
+            console.error('Unexpected error fetching sessions:', error);
+            setSessions([]);
+        } finally {
+            setLoading(false);
+        }
+    };
 
     // Fetch counseling sessions
     useEffect(() => {
-        const fetchSessions = async () => {
-            if (!user?.id || !session) return;
-
-            const token = await session.getToken({ template: 'supabase' });
-            const supabase = createAuthenticatedClient(token || '');
-
-            try {
-                setLoading(true);
-
-                // Try to find user in Supabase - check if id matches Clerk userId or if there's a clerk_id field
-                let studentId = user.id;
-
-                // First try: assume users.id matches Clerk userId
-                const { data: userData, error: userError } = await supabase
-                    .from('users')
-                    .select('id')
-                    .eq('id', user.id)
-                    .single();
-
-                if (userData && !userError) {
-                    studentId = userData.id;
-                } else {
-                    // If not found, try clerk_id field
-                    const { data: userDataByClerkId, error: clerkIdError } = await supabase
-                        .from('users')
-                        .select('id')
-                        .eq('clerk_id', user.id)
-                        .single();
-
-                    if (userDataByClerkId && !clerkIdError) {
-                        studentId = userDataByClerkId.id;
-                    } else {
-                        // User not found in Supabase - this is okay, they might not have any sessions yet
-                        console.log('User not found in Supabase users table. This is normal for new users.');
-                        setSessions([]);
-                        setLoading(false);
-                        return;
-                    }
-                }
-
-                // Fetch counseling sessions
-                const { data: joinedData, error: joinError } = await supabase
-                    .from('counseling_sessions')
-                    .select(`
-            id,
-            status,
-            type,
-            scheduled_at,
-            counselor_id
-          `)
-                    .eq('student_id', studentId)
-                    .order('scheduled_at', { ascending: false });
-
-                if (joinError) {
-                    // Log detailed error information
-                    const errorInfo: any = {
-                        message: joinError.message || 'Unknown error',
-                        details: joinError.details || 'No details available',
-                        hint: joinError.hint || 'No hint available',
-                        code: joinError.code || 'No error code',
-                    };
-
-                    // Log the full error object
-                    console.error('Error fetching counseling sessions:', errorInfo);
-
-                    // Common error: Table doesn't exist or RLS policy issue
-                    if (joinError.code === 'PGRST116' || joinError.message?.includes('relation') || joinError.message?.includes('does not exist')) {
-                        console.warn('Possible issue: Table "counseling_sessions" may not exist or RLS policies may be blocking access.');
-                    }
-
-                    setSessions([]);
-                    return;
-                }
-
-                if (!joinedData) {
-                    setSessions([]);
-                    return;
-                }
-
-                let sessionsData = joinedData;
-
-                // Fetch counselor info separately if counselor_id exists
-                const counselorIds = [...new Set(joinedData.map((s: any) => s.counselor_id).filter(Boolean))];
-
-                if (counselorIds.length > 0) {
-                    const { data: counselorsData, error: counselorsError } = await supabase
-                        .from('users')
-                        .select('id, full_name, email')
-                        .in('id', counselorIds);
-
-                    if (counselorsError) {
-                        console.error('Error fetching counselors:', counselorsError);
-                    }
-
-                    // Map counselor data to sessions (even if there was an error, continue with available data)
-                    const counselorsMap = new Map(
-                        (counselorsData || []).map((c: any) => [c.id, c])
-                    );
-
-                    sessionsData = sessionsData.map((session: any) => ({
-                        ...session,
-                        counselor: session.counselor_id ? (counselorsMap.get(session.counselor_id) || null) : null,
-                    }));
-                }
-
-                // Transform data to match our interface
-                const transformedSessions = sessionsData.map((session: any) => ({
-                    id: session.id,
-                    status: session.status || 'Pending',
-                    type: session.type || 'General',
-                    scheduled_at: session.scheduled_at,
-                    counselor: session.counselor ? {
-                        id: session.counselor.id,
-                        full_name: session.counselor.full_name,
-                        email: session.counselor.email,
-                    } : null,
-                }));
-                setSessions(transformedSessions);
-            } catch (error) {
-                console.error('Unexpected error fetching sessions:', error);
-                setSessions([]);
-            } finally {
-                setLoading(false);
-            }
-        };
-
         if (isLoaded && user) {
             fetchSessions();
         }
     }, [user, isLoaded, session]);
+
+    const handleDeleteSelected = async () => {
+        if (!user || !session || selectedRows.size === 0) return;
+
+        try {
+            setIsDeleting(true);
+            const token = await session.getToken({ template: 'supabase' });
+            const supabase = createAuthenticatedClient(token || '');
+
+            const { error } = await supabase
+                .from('counseling_sessions')
+                .delete()
+                .in('id', Array.from(selectedRows));
+
+            if (error) {
+                console.error('Error deleting sessions:', error);
+                alert('Failed to delete sessions. Please try again.');
+            } else {
+                setSelectedRows(new Set());
+                fetchSessions();
+            }
+        } catch (error) {
+            console.error('Error deleting sessions:', error);
+        } finally {
+            setIsDeleting(false);
+        }
+    };
 
     // Filter sessions
     const filteredSessions = sessions.filter(session => {
@@ -184,6 +206,10 @@ export default function SessionHistory() {
         if (newSelected.has(sessionId)) {
             newSelected.delete(sessionId);
         } else {
+            if (newSelected.size >= 10) {
+                alert("You can select up to 10 sessions at a time.");
+                return;
+            }
             newSelected.add(sessionId);
         }
         setSelectedRows(newSelected);
@@ -331,18 +357,30 @@ export default function SessionHistory() {
                         {/* Action Buttons - Pushed to bottom */}
                         <div className="flex justify-end gap-3 mt-auto pt-4">
                             <button
-                                disabled={selectedRows.size === 0}
-                                className="px-4 py-2 bg-[#0F1E0F] border border-gray-700 rounded-lg text-gray-200 hover:bg-[#1a2f1a] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                onClick={handleDeleteSelected}
+                                disabled={selectedRows.size === 0 || isDeleting}
+                                className="px-4 py-2 bg-[#0F1E0F] border border-gray-700 rounded-lg text-gray-200 hover:bg-[#1a2f1a] transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
                             >
-                                Delete Selected
+                                {isDeleting ? 'Deleting...' : 'Delete Selected'}
                             </button>
-                            <button className="px-4 py-2 bg-mindful-green hover:bg-[#5a9f5f] text-white rounded-lg transition-colors font-medium">
+                            <button
+                                onClick={() => setIsModalOpen(true)}
+                                className="px-4 py-2 bg-mindful-green hover:bg-[#5a9f5f] text-white rounded-lg transition-colors font-medium"
+                            >
                                 Request new session
                             </button>
                         </div>
                     </>
                 )}
             </div>
+
+            <RequestSessionModal
+                isOpen={isModalOpen}
+                onClose={() => setIsModalOpen(false)}
+                onSuccess={() => {
+                    fetchSessions();
+                }}
+            />
         </div>
     );
 }
