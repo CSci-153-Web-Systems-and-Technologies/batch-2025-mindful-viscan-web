@@ -1,24 +1,45 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useSession, useUser } from '@clerk/nextjs';
 import { createAuthenticatedClient } from '@/lib/supabaseClient';
+import { Resource } from '@/app/components/resources/ResourceGrid';
 
 interface AddResourceModalProps {
     isOpen: boolean;
     onClose: () => void;
     onSuccess: () => void;
+    resourceToEdit?: Resource | null;
 }
 
-export default function AddResourceModal({ isOpen, onClose, onSuccess }: AddResourceModalProps) {
+export default function AddResourceModal({ isOpen, onClose, onSuccess, resourceToEdit }: AddResourceModalProps) {
     const { user } = useUser();
     const { session } = useSession();
 
     const [title, setTitle] = useState('');
+    const [description, setDescription] = useState('');
     const [type, setType] = useState('Article');
+    const [contentType, setContentType] = useState('Academic'); // Default
     const [content, setContent] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [error, setError] = useState('');
+
+    useEffect(() => {
+        if (isOpen && resourceToEdit) {
+            setTitle(resourceToEdit.title);
+            setDescription(resourceToEdit.description || '');
+            setType(resourceToEdit.type as any); // cast if needed
+            setContentType(resourceToEdit.content_type || 'Academic');
+            setContent(resourceToEdit.content);
+        } else if (isOpen && !resourceToEdit) {
+            // Reset if opening in add mode
+            setTitle('');
+            setDescription('');
+            setType('Article');
+            setContentType('Academic');
+            setContent('');
+        }
+    }, [isOpen, resourceToEdit]);
 
     if (!isOpen) return null;
 
@@ -26,8 +47,8 @@ export default function AddResourceModal({ isOpen, onClose, onSuccess }: AddReso
         e.preventDefault();
         if (!user?.id || !session) return;
 
-        if (!title.trim() || !content.trim()) {
-            setError('Please fill in directly required fields');
+        if (!title.trim() || !content.trim() || !description.trim()) {
+            setError('Please fill in all required fields');
             return;
         }
 
@@ -38,28 +59,46 @@ export default function AddResourceModal({ isOpen, onClose, onSuccess }: AddReso
             const token = await session.getToken({ template: 'supabase' });
             const supabase = createAuthenticatedClient(token || '');
 
-            const { error: insertError } = await supabase
-                .from('resources')
-                .insert({
-                    title: title.trim(),
-                    type: type,
-                    content: content.trim(),
-                });
+            let resultError;
 
-            if (insertError) {
-                console.error('Resource insert error:', insertError);
-                throw insertError;
+            if (resourceToEdit) {
+                // Update
+                const { error: updateError } = await supabase
+                    .from('resources')
+                    .update({
+                        title: title.trim(),
+                        description: description.trim(),
+                        type: type,
+                        content_type: contentType,
+                        content: content.trim(),
+                    })
+                    .eq('id', resourceToEdit.id);
+                resultError = updateError;
+            } else {
+                // Insert
+                const { error: insertError } = await supabase
+                    .from('resources')
+                    .insert({
+                        title: title.trim(),
+                        description: description.trim(),
+                        type: type,
+                        content_type: contentType,
+                        content: content.trim(),
+                    });
+                resultError = insertError;
             }
 
-            // Reset
-            setTitle('');
-            setContent('');
-            setType('Article');
+            if (resultError) {
+                console.error('Resource save error:', resultError);
+                throw resultError;
+            }
+
+            // Success
             onSuccess();
             onClose();
         } catch (err: any) {
-            console.error('Error adding resource:', err);
-            setError('Failed to add resource. Please try again.');
+            console.error('Error saving resource:', err);
+            setError('Failed to save resource. Please try again.');
         } finally {
             setIsSubmitting(false);
         }
@@ -68,7 +107,9 @@ export default function AddResourceModal({ isOpen, onClose, onSuccess }: AddReso
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm">
             <div className="w-full max-w-md bg-[#031207] border border-gray-800 rounded-2xl shadow-[0px_0px_20px_0px_rgba(34,197,94,0.1)] p-6 m-4 animate-in fade-in zoom-in duration-200">
-                <h2 className="text-xl font-bold text-white mb-6">Add New Resource</h2>
+                <h2 className="text-xl font-bold text-white mb-6">
+                    {resourceToEdit ? 'Edit Resource' : 'Add New Resource'}
+                </h2>
 
                 {error && (
                     <div className="mb-4 p-3 bg-red-900/40 border border-red-800 rounded-lg text-red-200 text-sm">
@@ -89,23 +130,50 @@ export default function AddResourceModal({ isOpen, onClose, onSuccess }: AddReso
                         />
                     </div>
 
-                    {/* Type */}
+                    {/* Description */}
                     <div className="space-y-1">
-                        <label className="text-sm text-gray-400 font-medium ml-1">Type</label>
-                        <div className="flex bg-[#0F1E0F] p-1 rounded-xl border border-gray-700">
-                            {['Article', 'Video'].map((t) => (
-                                <button
-                                    key={t}
-                                    type="button"
-                                    onClick={() => setType(t)}
-                                    className={`flex-1 py-2 rounded-lg text-sm font-medium transition-colors ${type === t
+                        <label className="text-sm text-gray-400 font-medium ml-1">Description</label>
+                        <textarea
+                            value={description}
+                            onChange={(e) => setDescription(e.target.value)}
+                            placeholder="Brief summary of the resource..."
+                            rows={2}
+                            className="w-full px-4 py-3 bg-[#0F1E0F] border border-gray-700 rounded-xl text-gray-200 placeholder-gray-600 focus:outline-none focus:border-mindful-green resize-none"
+                        />
+                    </div>
+
+                    {/* Type & Category */}
+                    <div className="flex gap-4">
+                        <div className="flex-1 space-y-1">
+                            <label className="text-sm text-gray-400 font-medium ml-1">Type</label>
+                            <div className="flex bg-[#0F1E0F] p-1 rounded-xl border border-gray-700">
+                                {['Article', 'Video'].map((t) => (
+                                    <button
+                                        key={t}
+                                        type="button"
+                                        onClick={() => setType(t)}
+                                        className={`flex-1 py-2 rounded-lg text-sm font-medium transition-colors ${type === t
                                             ? 'bg-mindful-green text-white shadow-lg'
                                             : 'text-gray-400 hover:text-gray-200'
-                                        }`}
-                                >
-                                    {t}
-                                </button>
-                            ))}
+                                            }`}
+                                    >
+                                        {t}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+
+                        <div className="flex-1 space-y-1">
+                            <label className="text-sm text-gray-400 font-medium ml-1">Category</label>
+                            <select
+                                value={contentType}
+                                onChange={(e) => setContentType(e.target.value)}
+                                className="w-full px-4 py-2.5 h-[46px] bg-[#0F1E0F] border border-gray-700 rounded-xl text-gray-200 focus:outline-none focus:border-mindful-green appearance-none"
+                            >
+                                {['Academic', 'Health', 'Social', 'Personal'].map((c) => (
+                                    <option key={c} value={c}>{c}</option>
+                                ))}
+                            </select>
                         </div>
                     </div>
 
@@ -137,7 +205,7 @@ export default function AddResourceModal({ isOpen, onClose, onSuccess }: AddReso
                             disabled={isSubmitting}
                             className="flex-1 px-4 py-3 bg-mindful-green text-white rounded-xl hover:bg-[#5a9f5f] transition-all shadow-lg shadow-mindful-green/20 font-medium disabled:opacity-50 disabled:cursor-not-allowed flex justify-center items-center gap-2"
                         >
-                            {isSubmitting ? 'Saving...' : 'Add Resource'}
+                            {isSubmitting ? 'Saving...' : (resourceToEdit ? 'Save Changes' : 'Add Resource')}
                         </button>
                     </div>
                 </form>
