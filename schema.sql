@@ -96,3 +96,9 @@ USING (
   OR 
   (select auth.jwt() ->> 'sub') = counselor_id 
 );
+
+CREATE POLICY "Students can request sessions"
+ON public.counseling_sessions
+FOR INSERT
+TO authenticated
+WITH CHECK ( (select auth.jwt() ->> 'sub') = student_id );
