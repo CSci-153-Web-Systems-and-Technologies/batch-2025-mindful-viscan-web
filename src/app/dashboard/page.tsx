@@ -27,14 +27,33 @@ export default function StudentDashboard() {
         const token = await session.getToken({ template: 'supabase' });
         const supabase = createAuthenticatedClient(token || '');
 
-        // Attempt to insert login record for today
-        // RLS policy ensures users can only insert their own ID
-        // The unique constraint (user_id, login_date) will fail if already exists, which we ignore
-        await supabase
+        // 1. Ensure user exists in Supabase (Self-Healing)
+        // This prevents FK violation if webhook hasn't fired yet
+        const { error: userError } = await supabase
+          .from('users')
+          .upsert({
+            id: user.id,
+            full_name: user.fullName || user.firstName || 'User',
+            role: 'student'
+          }, { onConflict: 'id' });
+
+        if (userError) {
+          console.error("Failed to ensure user exists for login tracking:", JSON.stringify(userError, null, 2));
+        }
+
+        // 2. Attempt to insert login record for today
+        const { error: loginError } = await supabase
           .from('daily_logins')
           .insert({
             user_id: user.id
           });
+
+        if (loginError) {
+          // Ignore unique constraint violations (already logged in today)
+          if (loginError.code !== '23505') {
+            console.error("Error recording daily login:", JSON.stringify(loginError, null, 2));
+          }
+        }
 
       } catch (error) {
         // Ignore errors (especially unique constraint violations)

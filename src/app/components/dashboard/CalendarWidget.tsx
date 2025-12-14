@@ -189,7 +189,7 @@ export default function CalendarWidget() {
                         <div
                             key={index}
                             className={`
-                aspect-square flex items-center justify-center text-sm
+                aspect-square flex items-center justify-center text-sm relative
                 ${isCurrentMonth ? 'text-gray-200' : 'text-gray-500'}
                 ${isTodayDate
                                     ? 'bg-mindful-green/30 border-2 border-mindful-green rounded'
