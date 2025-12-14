@@ -65,9 +65,9 @@ export async function POST(req: Request) {
     const eventType = evt.type
 
     if (eventType === 'user.created') {
-        const { id, first_name, last_name, public_metadata } = evt.data
+        const { id, first_name, last_name, public_metadata, unsafe_metadata } = evt.data
         const fullName = `${first_name || ''} ${last_name || ''}`.trim()
-        const role = (public_metadata?.role as string) || 'student' // Default to student
+        const role = (public_metadata?.role as string) || (unsafe_metadata?.role as string) || 'student' // Default to student
 
         const { error } = await supabase.from('users').upsert({
             id: id,

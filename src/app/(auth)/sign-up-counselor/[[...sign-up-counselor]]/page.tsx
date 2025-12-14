@@ -16,11 +16,12 @@ export default function SignUpCounselorPage() {
                 Welcome! Please fill in the details to get started.
               </p>
             </div>
-            <SignUp 
-              routing="path"
+            <SignUp
               path="/sign-up-counselor"
               signInUrl="/sign-in"
-              afterSignUpUrl="/post-sign-up-counselor"
+              fallbackRedirectUrl="/counselor-dashboard"
+              forceRedirectUrl="/counselor-dashboard"
+              unsafeMetadata={{ role: 'counselor' }}
               appearance={{
                 elements: {
                   rootBox: "w-full",

@@ -114,16 +114,14 @@ export default function SessionHistory() {
             if (counselorIds.length > 0) {
                 const { data: counselorsData, error: counselorsError } = await supabase
                     .from('users')
-                    .select('id, full_name') // Removed email as it doesn't exist in schema
+                    .select('id, full_name, email')
                     .in('id', counselorIds);
 
                 if (counselorsError) {
-                    console.error('Error fetching counselors LOG START');
-                    console.error('Error stringified:', JSON.stringify(counselorsError, Object.getOwnPropertyNames(counselorsError), 2));
-                    console.error('Error fetching counselors LOG END');
+                    console.error('Error fetching counselors:', counselorsError);
                 }
 
-                // Map counselor data to sessions
+                // Map counselor data to sessions (even if there was an error, continue with available data)
                 const counselorsMap = new Map(
                     (counselorsData || []).map((c: any) => [c.id, c])
                 );
@@ -144,7 +142,7 @@ export default function SessionHistory() {
                 counselor: session.counselor ? {
                     id: session.counselor.id,
                     full_name: session.counselor.full_name,
-                    // email removed
+                    email: session.counselor.email,
                 } : null,
             }));
             setSessions(transformedSessions);
@@ -239,10 +237,10 @@ export default function SessionHistory() {
         return `${date.getMonth() + 1}/${date.getDate()}`;
     };
 
-    // Get counselor display name
+    // Get counselor display name/email
     const getCounselorDisplay = (counselor: CounselingSession['counselor']) => {
         if (!counselor) return 'N/A';
-        return counselor.full_name || 'Unknown Counselor';
+        return counselor.email || counselor.full_name || 'Unknown';
     };
 
     return (
@@ -303,12 +301,13 @@ export default function SessionHistory() {
                                         </th>
                                         <th className="px-4 py-3 text-left text-gray-200 text-sm font-medium">Date</th>
                                         <th className="px-4 py-3 text-left text-gray-200 text-sm font-medium">Session Type</th>
+                                        <th className="px-4 py-3 text-left text-gray-200 text-sm font-medium">Action</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     {paginatedSessions.length === 0 ? (
                                         <tr>
-                                            <td colSpan={6} className="px-4 py-8 text-center text-gray-400">
+                                            <td colSpan={7} className="px-4 py-8 text-center text-gray-400">
                                                 No sessions found
                                             </td>
                                         </tr>
@@ -336,6 +335,16 @@ export default function SessionHistory() {
                                                     {session.scheduled_at ? formatDate(session.scheduled_at) : 'N/A'}
                                                 </td>
                                                 <td className="px-4 py-3 text-gray-200 text-sm">{session.type || 'N/A'}</td>
+                                                <td className="px-4 py-3">
+                                                    {['Active', 'Completed', 'Cancelled', 'Pending'].includes(session.status) && (
+                                                        <a
+                                                            href={`/counseling?session=${session.id}`}
+                                                            className="text-xs bg-mindful-green/10 text-mindful-green border border-mindful-green/20 px-3 py-1.5 rounded-lg hover:bg-mindful-green/20 transition-colors"
+                                                        >
+                                                            Chat
+                                                        </a>
+                                                    )}
+                                                </td>
                                             </tr>
                                         ))
                                     )}

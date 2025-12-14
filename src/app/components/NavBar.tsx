@@ -8,11 +8,11 @@ import Button from './Button';
 const NavBar: React.FC = () => {
   return (
     <nav className="fixed top-0 w-full z-50 flex items-center px-2 py-2 text-white" style={{ backgroundColor: 'var(--color-mindful-dark)' }}>
-     {/* === LOGO SECTION === */}
+      {/* === LOGO SECTION === */}
       <div className="cursor-pointer hover:opacity-80 transition-opacity">
-        <Image 
-          src="/images/Logo.png" 
-          alt="MindfulViscan Logo" 
+        <Image
+          src="/images/Logo.png"
+          alt="MindfulViscan Logo"
           width={60}
           height={60}
           className="object-contain"
@@ -27,12 +27,15 @@ const NavBar: React.FC = () => {
             <a href="/dashboard" className="hover:text-green-300 transition-colors font-medium">
               Dashboard
             </a>
+            <a href="/counseling" className="hover:text-green-300 transition-colors font-medium">
+              Counseling
+            </a>
             <a href="/resources" className="hover:text-green-300 transition-colors font-medium">
               Resources
             </a>
-            
+
             {/* User Profile Avatar / Dropdown */}
-            <UserButton 
+            <UserButton
               appearance={{
                 elements: {
                   avatarBox: "h-10 w-10",
@@ -43,13 +46,13 @@ const NavBar: React.FC = () => {
             />
           </>
         </SignedIn>
-        
+
         <SignedOut>
           {/* === STATE B: GUEST (Public View) === */}
           <>
-             <div className="space-x-8 text-sm font-medium opacity-80 hidden md:block">
+            <div className="space-x-8 text-sm font-medium opacity-80 hidden md:block">
             </div>
-            
+
             <Button text="Login" href="/sign-in" className="hover:bg-mindful-green py-2 px-2 text-sm" />
             <Button text="Sign Up" href="/sign-up" className="hover:bg-mindful-green py-2 px-2 text-sm" />
           </>

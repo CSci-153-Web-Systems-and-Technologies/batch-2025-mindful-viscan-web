@@ -23,6 +23,9 @@ const CounselorNavBar: React.FC = () => {
                 <SignedIn>
                     <div className="flex items-center gap-6 mr-4">
                         <a href="/counselor-dashboard" className="text-gray-300 hover:text-mindful-green transition-colors font-medium text-sm uppercase tracking-wider">
+                            Dashboard
+                        </a>
+                        <a href="/counselor-dashboard/counseling" className="text-gray-300 hover:text-mindful-green transition-colors font-medium text-sm uppercase tracking-wider">
                             Counseling
                         </a>
                         <a href="/counselor-dashboard/resources" className="text-gray-300 hover:text-mindful-green transition-colors font-medium text-sm uppercase tracking-wider">
