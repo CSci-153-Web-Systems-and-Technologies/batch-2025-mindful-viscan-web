@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { createAuthenticatedClient } from '@/lib/supabaseClient';
 import { useSession, useUser } from '@clerk/nextjs';
 
@@ -28,14 +28,24 @@ export default function MoodEntry({ onEntryAdded, currentLog }: MoodEntryProps) 
 
     // UI State
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [isEditing, setIsEditing] = useState(false);
+
+    // Load initial data if editing (or if currentLog changes and we are in edit mode)
+    useEffect(() => {
+        if (currentLog && isEditing) {
+            setRating(currentLog.rating);
+            setSummary(currentLog.summary || '');
+            setNote(currentLog.note || '');
+        }
+    }, [currentLog, isEditing]);
 
     // Mood Icons & Colors
     const moods = [
-        { value: 1, label: 'Awful', icon: '😫', color: 'text-red-500 hover:bg-red-500/10' },
-        { value: 2, label: 'Bad', icon: '☹️', color: 'text-orange-500 hover:bg-orange-500/10' },
-        { value: 3, label: 'Okay', icon: '😐', color: 'text-yellow-500 hover:bg-yellow-500/10' },
-        { value: 4, label: 'Good', icon: '🙂', color: 'text-green-400 hover:bg-green-400/10' },
-        { value: 5, label: 'Great', icon: '🤩', color: 'text-green-600 hover:bg-green-600/10' },
+        { value: 1, label: 'Awful', icon: '😫', color: 'text-red-500 hover:bg-red-500/10', actionText: "I'm sorry to hear that. Want to get it off your chest?" },
+        { value: 2, label: 'Bad', icon: '☹️', color: 'text-orange-500 hover:bg-orange-500/10', actionText: "Tough day? Writing about it might help." },
+        { value: 3, label: 'Okay', icon: '😐', color: 'text-yellow-500 hover:bg-yellow-500/10', actionText: "Just an average day? Want to add any notes?" },
+        { value: 4, label: 'Good', icon: '🙂', color: 'text-green-400 hover:bg-green-400/10', actionText: "Glad to hear it! What made it good?" },
+        { value: 5, label: 'Great', icon: '🤩', color: 'text-green-600 hover:bg-green-600/10', actionText: "That's awesome! Note down what went right!" },
     ];
 
     const handleSubmit = async () => {
@@ -46,14 +56,29 @@ export default function MoodEntry({ onEntryAdded, currentLog }: MoodEntryProps) 
             const token = await session.getToken({ template: 'supabase' });
             const supabase = createAuthenticatedClient(token || '');
 
-            const { error } = await supabase
-                .from('mood_logs')
-                .insert({
-                    user_id: user.id,
-                    rating,
-                    summary,
-                    note
-                });
+            const payload = {
+                user_id: user.id,
+                rating,
+                summary,
+                note
+            };
+
+            let error;
+
+            if (currentLog) {
+                // Update existing
+                const { error: updateError } = await supabase
+                    .from('mood_logs')
+                    .update(payload)
+                    .eq('id', currentLog.id);
+                error = updateError;
+            } else {
+                // Insert new
+                const { error: insertError } = await supabase
+                    .from('mood_logs')
+                    .insert(payload);
+                error = insertError;
+            }
 
             if (error) {
                 console.error("Error submitting mood:", error);
@@ -62,6 +87,7 @@ export default function MoodEntry({ onEntryAdded, currentLog }: MoodEntryProps) 
                 setSummary('');
                 setRating(null);
                 setNote('');
+                setIsEditing(false); // Exit edit mode
                 onEntryAdded();
             }
         } catch (err) {
@@ -89,8 +115,8 @@ export default function MoodEntry({ onEntryAdded, currentLog }: MoodEntryProps) 
         setNote(newText);
     };
 
-    // If a log for today exists, show Read-Only View
-    if (currentLog) {
+    // If a log for today exists AND we are NOT editing, show Read-Only View
+    if (currentLog && !isEditing) {
         const mood = moods.find(m => m.value === currentLog.rating);
         return (
             <div className="w-full bg-[#031207] border border-gray-900/50 rounded-2xl p-6 flex flex-col gap-6 shadow-[4px_4px_0px_0px_rgba(34,197,94,0.15)] relative overflow-hidden">
@@ -107,9 +133,18 @@ export default function MoodEntry({ onEntryAdded, currentLog }: MoodEntryProps) 
                         {mood?.icon}
                     </div>
 
-                    <div className="bg-[#0F1E0F] px-6 py-3 rounded-xl border border-gray-800 max-w-lg mt-4">
-                        <p className="text-gray-200 italic">"{currentLog.summary}"</p>
-                    </div>
+                    {currentLog.summary && (
+                        <div className="bg-[#0F1E0F] px-6 py-3 rounded-xl border border-gray-800 max-w-lg mt-4">
+                            <p className="text-gray-200 italic">"{currentLog.summary}"</p>
+                        </div>
+                    )}
+
+                    <button
+                        onClick={() => setIsEditing(true)}
+                        className="mt-6 text-sm text-mindful-green hover:text-white underline underline-offset-4 transition-colors"
+                    >
+                        {mood?.actionText || "Add more details or change entry"}
+                    </button>
                 </div>
             </div>
         );
@@ -117,6 +152,14 @@ export default function MoodEntry({ onEntryAdded, currentLog }: MoodEntryProps) 
 
     return (
         <div className="w-full bg-[#031207] border border-gray-900/50 rounded-2xl p-6 flex flex-col gap-6 shadow-[4px_4px_0px_0px_rgba(34,197,94,0.15)]">
+            {/* Header if editing */}
+            {isEditing && (
+                <div className="flex justify-between items-center mb-2">
+                    <h3 className="text-white font-semibold">Editing Entry</h3>
+                    <button onClick={() => setIsEditing(false)} className="text-gray-400 hover:text-white text-sm">Cancel</button>
+                </div>
+            )}
+
             {/* Top Input: Summary */}
             <div className="relative group">
                 <input
@@ -167,7 +210,7 @@ export default function MoodEntry({ onEntryAdded, currentLog }: MoodEntryProps) 
                     disabled={isSubmitting || !rating || !summary}
                     className="px-6 py-2 bg-white text-black font-semibold rounded-lg hover:bg-gray-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                    {isSubmitting ? 'Submitting...' : 'Submit'}
+                    {isSubmitting ? 'Saving...' : (currentLog ? 'Update Entry' : 'Submit')}
                 </button>
             </div>
         </div>

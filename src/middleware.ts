@@ -25,7 +25,13 @@ export default clerkMiddleware(async (auth, req) => {
     path.startsWith(p)
   );
 
-  const isPublic = ['/', '/sign-in', '/sign-up', '/sign-up-counselor'].includes(path);
+  const isPublic = [
+    '/',
+    '/sign-in',
+    '/sign-up',
+    '/sign-up-counselor',
+    '/api/webhooks/clerk' // Explicitly allow webhook
+  ].includes(path);
 
   // Signed-in users shouldn’t see public/auth pages
   if (userId && isPublic) {

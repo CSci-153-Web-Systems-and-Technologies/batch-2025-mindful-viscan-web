@@ -6,6 +6,7 @@ import NavBar from '@/app/components/NavBar';
 import CalendarWidget from '@/app/components/dashboard/CalendarWidget';
 import MoodTracker from '@/app/components/dashboard/MoodTracker';
 import SessionHistory from '@/app/components/dashboard/SessionHistory';
+import { createAuthenticatedClient } from '@/lib/supabaseClient';
 
 
 
@@ -16,6 +17,33 @@ import SessionHistory from '@/app/components/dashboard/SessionHistory';
 // This interface is likely used in children, but since we are extracting children, we just need the default export
 export default function StudentDashboard() {
   const { user, isLoaded } = useUser();
+  const { session } = useSession();
+
+  // Record Daily Login
+  useEffect(() => {
+    const recordLogin = async () => {
+      if (!user || !session) return;
+      try {
+        const token = await session.getToken({ template: 'supabase' });
+        const supabase = createAuthenticatedClient(token || '');
+
+        // Attempt to insert login record for today
+        // RLS policy ensures users can only insert their own ID
+        // The unique constraint (user_id, login_date) will fail if already exists, which we ignore
+        await supabase
+          .from('daily_logins')
+          .insert({
+            user_id: user.id
+          });
+
+      } catch (error) {
+        // Ignore errors (especially unique constraint violations)
+        // console.log("Login already recorded or error:", error);
+      }
+    };
+
+    recordLogin();
+  }, [user, session]);
 
   if (!isLoaded) {
     return (
@@ -30,6 +58,8 @@ export default function StudentDashboard() {
 
   // Get user's name from Clerk
   const userName = user?.firstName || user?.fullName || 'User';
+
+
 
   return (
     <main className="flex min-h-screen flex-col p-0 bg-[linear-gradient(110deg,var(--color-mindful-green)_0%,var(--color-mindful-dark)_100%)]">
