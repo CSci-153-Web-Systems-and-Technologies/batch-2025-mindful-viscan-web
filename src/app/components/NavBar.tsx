@@ -30,6 +30,9 @@ const NavBar: React.FC = () => {
             <a href="/counseling" className="hover:text-green-300 transition-colors font-medium">
               Counseling
             </a>
+            <a href="/mood-tracking" className="hover:text-green-300 transition-colors font-medium">
+              Mood Tracking
+            </a>
             <a href="/resources" className="hover:text-green-300 transition-colors font-medium">
               Resources
             </a>
