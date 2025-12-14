@@ -1,0 +1,9 @@
+@import url('https://fonts.googleapis.com/css2?family=Kodchasan:wght@400;500;600;700&display=swap');
+
+@import "tailwindcss";
+
+@theme {
+  --color-mindful-green: #4A8A4F;
+  --color-mindful-dark: #0F1E0F;
+  --font-kodchasan: Kodchasan, sans-serif;
+}
