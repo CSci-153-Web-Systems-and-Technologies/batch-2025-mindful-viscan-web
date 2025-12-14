@@ -2,14 +2,13 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 
-// Interfaces (Shared or Local)
 export interface Message {
     id: string;
     session_id: string;
     sender_id: string;
     content: string;
     created_at: string;
-    is_counselor: boolean; // Helper to distinguish visual style
+    is_counselor?: boolean; // Helper based on sender comparison
 }
 
 interface ChatInterfaceProps {
@@ -62,14 +61,14 @@ export default function ChatInterface({
                 </div>
                 <h3 className="text-xl font-medium text-gray-300">Select a Session</h3>
                 <p className="mt-2 text-sm max-w-sm">
-                    Choose a student session from the sidebar to view the conversation and start chatting.
+                    Choose a session from the sidebar to view the conversation and start chatting.
                 </p>
             </div>
         );
     }
 
     return (
-        <div className="flex-1 flex flex-col bg-[#031207] rounded-r-2xl overflow-hidden relative">
+        <div className="flex-1 flex flex-col h-full bg-[#031207] rounded-r-2xl overflow-hidden relative">
             {/* Header */}
             <header className="px-6 py-4 border-b border-gray-800 flex items-center justify-between bg-[#031207]">
                 <div>

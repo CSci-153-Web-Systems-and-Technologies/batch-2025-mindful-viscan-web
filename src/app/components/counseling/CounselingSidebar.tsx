@@ -23,9 +23,10 @@ interface CounselingSidebarProps {
     sessions: Session[];
     selectedSessionId: string | null;
     onSelectSession: (id: string) => void;
+    showPending?: boolean;
 }
 
-export default function CounselingSidebar({ sessions, selectedSessionId, onSelectSession }: CounselingSidebarProps) {
+export default function CounselingSidebar({ sessions, selectedSessionId, onSelectSession, showPending = false }: CounselingSidebarProps) {
     // Group sessions
     const activeSessions = sessions.filter(s => s.status === 'Active');
     const pendingSessions = sessions.filter(s => s.status === 'Pending');
@@ -83,6 +84,22 @@ export default function CounselingSidebar({ sessions, selectedSessionId, onSelec
                         )}
                     </div>
                 </section>
+
+                {/* Pending Section - Conditional */}
+                {showPending && (
+                    <section>
+                        <h3 className="text-xs font-semibold text-gray-400 mb-3 px-2 uppercase tracking-wider">
+                            Pending
+                        </h3>
+                        <div className="space-y-1">
+                            {pendingSessions.length > 0 ? (
+                                pendingSessions.map(renderSessionItem)
+                            ) : (
+                                <p className="text-gray-600 text-xs px-2 italic">No pending requests</p>
+                            )}
+                        </div>
+                    </section>
+                )}
 
                 {/* Closed Section */}
                 <section>
