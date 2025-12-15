@@ -116,9 +116,44 @@ export default function CounselorSessionList() {
     };
 
     useEffect(() => {
-        if (session) {
-            fetchSessions();
-        }
+        let channel: any;
+
+        const setupRealtime = async () => {
+            if (!session) return;
+            fetchSessions(); // Initial fetch
+
+            const token = await session.getToken({ template: 'supabase' });
+            const supabase = createAuthenticatedClient(token || '');
+
+            channel = supabase
+                .channel('counselor-sessions-changes')
+                .on(
+                    'postgres_changes',
+                    {
+                        event: '*', // Listen to ALL events (INSERT, UPDATE, DELETE)
+                        schema: 'public',
+                        table: 'counseling_sessions',
+                    },
+                    (payload) => {
+                        console.log('Realtime change detected:', payload);
+                        fetchSessions(); // Re-fetch to get full joined data (student details)
+                        // Note: For pure optimization we could manually merge, but re-fetching ensures clean join with Users table.
+                    }
+                )
+                .subscribe();
+        };
+
+        setupRealtime();
+
+        return () => {
+            if (channel) {
+                // accessing supabase instance to remove channel would require storing client in ref or state, 
+                // but just unmounting active listener is usually sufficient or requires storing the client.
+                // ideally we utilize a `supabase` instance if available in scope or cleanup properly.
+                // simplistic cleanup:
+                channel.unsubscribe();
+            }
+        };
     }, [session]);
 
     const getStatusColor = (status: string) => {
