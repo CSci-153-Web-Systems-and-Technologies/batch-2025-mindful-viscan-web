@@ -64,12 +64,9 @@ export default clerkMiddleware(async (auth, req) => {
 
     // --- Role: STUDENT ---
     if (role === 'student') {
-      // Allowed: /dashboard
-      // Blocked: /counselor-dashboard, /verify-counselor
+      // Allowed: /dashboard AND /verify-counselor (for new counselors masking as students)
+      // Blocked: /counselor-dashboard
       if (path.startsWith('/counselor-dashboard')) {
-        return NextResponse.redirect(new URL('/dashboard', req.url));
-      }
-      if (path.startsWith('/verify-counselor')) {
         return NextResponse.redirect(new URL('/dashboard', req.url));
       }
     }
