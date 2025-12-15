@@ -2,7 +2,13 @@
 
 import CounselorSessionList from '@/app/components/counselor/CounselorSessionList';
 import { SignedIn, SignedOut, RedirectToSignIn } from '@clerk/nextjs';
+import { useEffect } from 'react';
+import { syncCounselorRole } from '@/app/actions';
 export default function CounselorDashboard() {
+  useEffect(() => {
+    // Force sync role to ensure RLS policies work on localhost
+    syncCounselorRole();
+  }, []);
   return (
     <main className="flex min-h-screen flex-col p-0 bg-[linear-gradient(110deg,var(--color-mindful-green)_0%,var(--color-mindful-dark)_100%)]">
 
