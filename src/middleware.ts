@@ -39,7 +39,7 @@ export default clerkMiddleware(async (auth, req) => {
   // 3. Strict Role-Based Routing (The Security Matrix)
   if (userId) {
     const roleRaw = (sessionClaims?.metadata as any)?.role as string | undefined;
-    const role = roleRaw ?? 'student'; // Default to student if undefined
+    const role = roleRaw ?? 'applicant'; // Default to applicant (safest state) if undefined
 
     // --- Role: APPLICANT ---
     if (role === 'applicant') {
