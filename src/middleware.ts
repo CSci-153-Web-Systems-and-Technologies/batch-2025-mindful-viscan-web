@@ -39,7 +39,7 @@ export default clerkMiddleware(async (auth, req) => {
   // 3. Strict Role-Based Routing (The Security Matrix)
   if (userId) {
     const roleRaw = (sessionClaims?.metadata as any)?.role as string | undefined;
-    const role = roleRaw ?? 'applicant'; // Default to applicant (safest state) if undefined
+    const role = roleRaw ?? 'student'; // Default to student if undefined
 
     // --- Role: APPLICANT ---
     if (role === 'applicant') {
@@ -64,12 +64,9 @@ export default clerkMiddleware(async (auth, req) => {
 
     // --- Role: STUDENT ---
     if (role === 'student') {
-      // Allowed: /dashboard
-      // Blocked: /counselor-dashboard, /verify-counselor
+      // Allowed: /dashboard AND /verify-counselor (for new counselors masking as students)
+      // Blocked: /counselor-dashboard
       if (path.startsWith('/counselor-dashboard')) {
-        return NextResponse.redirect(new URL('/dashboard', req.url));
-      }
-      if (path.startsWith('/verify-counselor')) {
         return NextResponse.redirect(new URL('/dashboard', req.url));
       }
     }
