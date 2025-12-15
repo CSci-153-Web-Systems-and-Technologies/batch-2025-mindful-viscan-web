@@ -18,9 +18,15 @@ export default function VerifyCounselorPage() {
 
   // Ensure user is marked as pending if they are on this page
   useEffect(() => {
+    // 1. Auto-redirect if APPROVED
+    if (roleRaw === 'counselor' || counselorStatus === 'approved') {
+      window.location.href = '/counselor-dashboard'; // Hard navigation to trigger middleware and load new layout
+      return;
+    }
+
     const autoApply = async () => {
-      // If we don't have the explicit pending status yet, apply it
-      if (user && counselorStatus !== 'pending') {
+      // 2. If we don't have the explicit pending status yet (and not approved), apply it
+      if (user && counselorStatus !== 'pending' && roleRaw !== 'counselor') {
         const result = await ensureApplicantMetadata();
         // Only reload if we actually made a change, to avoid loops
         if (result?.updated) {
@@ -29,7 +35,7 @@ export default function VerifyCounselorPage() {
       }
     };
     autoApply();
-  }, [user, counselorStatus]);
+  }, [user, counselorStatus, roleRaw]);
 
   // Loading / Verification State
   if (!isLoaded || (!roleRaw && !counselorStatus)) {
